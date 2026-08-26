@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1116">
+<title>RSE — Temps de conduite et de repos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1116; --panel:#161B22; --card:#1C232C; --card2:#222B36;
+    --ink:#E8EEF4; --muted:#8494A6; --faint:#5A6877;
+    --line:#28313C; --line2:#36424F;
+    --amber:#F2A20C; --amber-d:#D68C05;
+    --ok:#2FB67C; --warn:#F2A20C; --bad:#E4483F;
+    --drive:#2FB67C; --work:#7C8CF8; --pause:#F2A20C; --rest:#4B90D8; --dispo:#8C6FE0;
+    --display:"Archivo",Arial Narrow,sans-serif;
+    --body:"Inter",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{background:#0E1116}
+  html,body{margin:0}
+  body{min-height:100vh}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:18px 15px 70px}
+  .eyebrow{font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint)}
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+  /* ---- en-tête ---- */
+  .top{display:flex; align-items:center; gap:13px; margin-bottom:18px}
+  .top .mark{flex:0 0 auto; width:44px; height:44px; border-radius:10px; background:var(--card);
+    border:1px solid var(--line2); display:grid; place-items:center; font-family:var(--display);
+    font-weight:800; color:var(--amber); font-size:15px; letter-spacing:.02em}
+  .top h1{font-family:var(--display); font-weight:800; letter-spacing:.02em; font-size:clamp(19px,5vw,25px); margin:0; line-height:1.05}
+  .top .sub{color:var(--muted); font-size:12.5px; margin-top:2px}
+
+  /* ---- onglets ---- */
+  .tabs{display:grid; grid-template-columns:repeat(3,1fr); gap:4px; background:var(--panel);
+    border:1px solid var(--line); border-radius:11px; padding:4px; margin-bottom:18px}
+  .tabs--4{grid-template-columns:repeat(4,1fr)}
+  .tabs--4 button{font-size:11px; padding:10px 3px}
+  .tabs button{appearance:none; border:0; background:transparent; color:var(--muted); cursor:pointer;
+    font-family:var(--display); font-weight:700; font-size:12.5px; letter-spacing:.03em; text-transform:uppercase;
+    padding:10px 5px; border-radius:8px}
+  .tabs button[aria-pressed="true"]{background:var(--amber); color:#1A1200}
+  .tabs button:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+  /* ---- verdict (signature) ---- */
+  .utcbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 13px;
+    background:var(--panel); border:1px solid var(--line2); border-radius:10px; margin-bottom:12px}
+  .utcbar .num{font-family:var(--display); font-weight:800; font-size:18px; color:var(--amber)}
+  .fr{font-family:var(--body); font-weight:400; font-size:11.5px; color:var(--faint); white-space:nowrap}
+  .row__t .fr{display:block; margin-top:1px}
+
+  .verdict{border-radius:15px; padding:16px 17px; margin-bottom:14px; border:1px solid var(--line2); background:var(--card)}
+  .verdict--ok{border-color:#2C7A5A; background:#17241F}
+  .verdict--warn{border-color:#8A6414; background:#25211A}
+  .verdict--bad{border-color:#8A322C; background:#26191A}
+  .verdict__head{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+  .verdict__t{font-family:var(--display); font-weight:800; font-size:19px; letter-spacing:.01em; margin:5px 0 0}
+  .verdict__t.ok{color:var(--ok)} .verdict__t.warn{color:var(--amber)} .verdict__t.bad{color:var(--bad)}
+  .verdict__d{font-size:13.5px; color:var(--muted); margin-top:5px}
+
+  /* ---- jauge conduite continue ---- */
+  .gauge{margin-top:14px}
+  .gauge__row{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:6px}
+  .gauge__lab{font-family:var(--mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint)}
+  .gauge__val{font-family:var(--display); font-weight:800; font-size:26px; letter-spacing:.01em}
+  .gauge__bar{height:9px; background:var(--line); border-radius:99px; overflow:hidden; position:relative}
+  .gauge__bar>i{display:block; height:100%; border-radius:99px; transition:width .3s ease}
+  .gauge__ticks{display:flex; justify-content:space-between; margin-top:5px}
+  .gauge__ticks span{font-family:var(--mono); font-size:10px; color:var(--faint)}
+
+  .restplan{border-radius:14px; padding:14px 15px; margin-bottom:13px; border:1px solid var(--line2); background:var(--card)}
+  .restplan--ok{border-color:#2C7A5A; background:#17241F}
+  .restplan--warn{border-color:#8A6414; background:#25211A}
+  .restplan--bad{border-color:#8A322C; background:#26191A}
+  .restplan__head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px}
+  .restplan__grid{display:grid; gap:10px}
+  @media(min-width:520px){ .restplan__grid{grid-template-columns:1fr 1fr} }
+  .rp__k{font-family:var(--mono); font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--faint); margin-bottom:3px}
+  .rp__v{font-family:var(--display); font-weight:700; font-size:15px; line-height:1.25}
+  .rp__v.ok{color:var(--ok)} .rp__v.warn{color:var(--amber)} .rp__v.bad{color:var(--bad)}
+  .rp__s{font-size:12px; color:var(--muted); margin-top:3px}
+  .restplan__foot{margin-top:11px; padding-top:10px; border-top:1px solid var(--line2); font-size:12.5px; color:var(--muted); line-height:1.5}
+
+  /* ---- compteurs ---- */
+  .meters{display:grid; grid-template-columns:repeat(2,1fr); gap:9px; margin-bottom:16px}
+  @media(min-width:560px){ .meters{grid-template-columns:repeat(4,1fr)} }
+  .meter{background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:11px 12px}
+  .meter__k{font-family:var(--mono); font-size:9.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint)}
+  .meter__v{font-family:var(--display); font-weight:800; font-size:20px; margin-top:3px; letter-spacing:.01em}
+  .meter__v small{font-family:var(--body); font-weight:500; font-size:11.5px; color:var(--muted)}
+  .meter--ok .meter__v{color:var(--ok)} .meter--warn .meter__v{color:var(--amber)} .meter--bad .meter__v{color:var(--bad)}
+
+  /* ---- réglette 24 h ---- */
+  .strip{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px; margin-bottom:16px}
+  .strip__head{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px}
+  .strip__bar{height:26px; background:#0A0D11; border:1px solid var(--line); border-radius:6px; overflow:hidden; display:flex; position:relative}
+  .strip__seg{height:100%}
+  .strip__hours{display:flex; justify-content:space-between; margin-top:5px}
+  .strip__hours span{font-family:var(--mono); font-size:9.5px; color:var(--faint)}
+  .legend{display:flex; flex-wrap:wrap; gap:11px; margin-top:10px}
+  .legend span{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--muted)}
+  .dot{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+
+  .statut{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:13px}
+  .stbtn{appearance:none; cursor:pointer; border:1px solid var(--line2); background:var(--panel); color:var(--muted);
+    border-radius:10px; padding:10px 6px; font-family:var(--body); font-size:10.5px; text-align:center; line-height:1.3}
+  .stbtn b{display:block; font-family:var(--display); font-size:12.5px; color:var(--ink); margin-bottom:2px}
+  .stbtn[aria-pressed="true"]{background:#2A2311; border-color:var(--amber); color:var(--ink)}
+  .stbtn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+  /* ---- saisie ---- */
+  .adder{background:var(--panel); border:1px solid var(--line2); border-radius:13px; padding:14px; margin-bottom:14px}
+  .kinds{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:11px}
+  .kinds .kind{font-size:10.5px; padding:9px 2px}
+  .kind[data-k="D"][aria-pressed="true"]{border-color:var(--dispo); background:#231C3A}
+  .kind{appearance:none; cursor:pointer; border:1px solid var(--line2); background:var(--card); color:var(--muted);
+    border-radius:10px; padding:10px 4px; font-family:var(--body); font-weight:600; font-size:12px; text-align:center}
+  .kind b{display:block; font-family:var(--display); font-size:17px; margin-bottom:2px; color:var(--ink)}
+  .kind[aria-pressed="true"]{color:var(--ink)}
+  .kind[data-k="C"][aria-pressed="true"]{border-color:var(--drive); background:#17301F}
+  .kind[data-k="T"][aria-pressed="true"]{border-color:var(--work); background:#1E2140}
+  .kind[data-k="P"][aria-pressed="true"]{border-color:var(--pause); background:#302614}
+  .kind[data-k="R"][aria-pressed="true"]{border-color:var(--rest); background:#16263A}
+  .times{display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:end}
+  .times .btn{grid-column:1 / -1; width:100%; margin-top:2px}
+  @media(min-width:480px){
+    .times{grid-template-columns:1fr 1fr auto}
+    .times .btn{grid-column:auto; width:auto; margin-top:0}
+  }
+  .fld label{display:block; font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:4px}
+  .fld input{width:100%; background:var(--card); border:1px solid var(--line2); border-radius:9px; color:var(--ink);
+    font-family:var(--mono); font-size:16px; padding:10px; outline:none}
+  .fld input:focus{border-color:var(--amber); box-shadow:0 0 0 3px rgba(242,162,12,.16)}
+
+  .adder textarea{width:100%; background:var(--card); border:1px solid var(--line2); border-radius:9px; color:var(--ink);
+    font-family:var(--mono); font-size:14px; padding:11px; outline:none; resize:vertical; line-height:1.5}
+  .adder textarea:focus{border-color:var(--amber); box-shadow:0 0 0 3px rgba(242,162,12,.16)}
+  .chk{display:flex; align-items:center; gap:8px; margin-top:9px; font-size:13px; color:var(--muted); cursor:pointer}
+  .chk input{width:17px; height:17px; accent-color:var(--amber)}
+
+  .btn{appearance:none; cursor:pointer; border:1px solid var(--line2); background:var(--card); color:var(--ink);
+    font-family:var(--body); font-weight:600; font-size:14px; padding:11px 15px; border-radius:10px}
+  .btn:hover{background:var(--card2)}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn--primary{background:var(--amber); border-color:var(--amber); color:#1A1200}
+  .btn--primary:hover{background:var(--amber-d)}
+  .btn--sm{padding:8px 11px; font-size:12.5px; border-radius:8px}
+  .btn--ghost{background:transparent}
+
+  /* ---- liste des activités ---- */
+  .rows{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+  .row{display:grid; grid-template-columns:34px 1fr auto 30px; gap:10px; align-items:center;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 11px}
+  .row__ic{width:26px; height:26px; border-radius:7px; display:grid; place-items:center; font-family:var(--display); font-weight:800; font-size:13px; color:#0A0D11}
+  .row__t{font-family:var(--mono); font-size:13.5px}
+  .row__d{font-family:var(--display); font-weight:700; font-size:14px; color:var(--muted)}
+  .row__x{appearance:none; border:0; background:transparent; color:var(--faint); font-size:17px; cursor:pointer; line-height:1}
+  .row__x:hover{color:var(--bad)}
+  .empty{background:var(--panel); border:1px dashed var(--line2); border-radius:12px; padding:22px 16px; text-align:center; color:var(--muted); font-size:13.5px; margin-bottom:14px}
+
+  /* ---- alertes ---- */
+  .alert{display:flex; gap:10px; align-items:flex-start; border-radius:11px; padding:11px 13px; margin-bottom:8px; font-size:13.5px; line-height:1.45}
+  .alert--bad{background:#2E1517; border:1px solid #7A2A25; color:#FFD2CD}
+  .alert--warn{background:#2C2312; border:1px solid #7A5A14; color:#FFE2AE}
+  .alert--ok{background:#122A20; border:1px solid #1F6B4C; color:#B6EFD3}
+  .alert--bad .alert__i{color:#FF8B82}
+  .alert--warn .alert__i{color:#FFC24D}
+  .alert--ok .alert__i{color:#5FD9A4}
+  .alert b{font-weight:600}
+  .alert__i{flex:0 0 auto; font-family:var(--display); font-weight:800}
+
+  /* ---- règles ---- */
+  .rule{background:var(--panel); border:1px solid var(--line); border-radius:12px; margin-bottom:9px; overflow:hidden}
+  .rule__h{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 14px; cursor:pointer}
+  .rule__h h3{font-family:var(--display); font-weight:700; font-size:15.5px; margin:0}
+  .rule__b{padding:0 14px 13px; display:none}
+  .rule.open .rule__b{display:block}
+  .rule__b table{width:100%; border-collapse:collapse; font-size:13.5px; table-layout:fixed}
+  .rule__b td{padding:8px 0; border-top:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere}
+  .rule__b td:first-child{color:var(--muted); padding-right:12px}
+  .rule__b td:last-child{text-align:right; font-family:var(--mono); font-weight:600; color:var(--ink)}
+  /* Sur petit écran : la valeur passe sous son intitulé plutôt que de déborder */
+  @media(max-width:520px){
+    .rule__b table, .rule__b tbody, .rule__b tr, .rule__b td{display:block; width:100%}
+    .rule__b tr{padding:8px 0; border-top:1px solid var(--line)}
+    .rule__b tr:first-child{border-top:0}
+    .rule__b td{border-top:0; padding:0}
+    .rule__b td:first-child{padding-right:0; font-size:13px}
+    .rule__b td:last-child{text-align:left; margin-top:2px; font-size:14px; color:var(--amber)}
+  }
+  .rule__b p{font-size:13.5px; color:var(--muted); margin:9px 0 0; line-height:1.5}
+  .chev{color:var(--faint); font-size:12px}
+
+  .msel{background:var(--card); border:1px solid var(--line2); border-radius:8px; color:var(--ink);
+    font-family:var(--body); font-size:13px; padding:7px 10px}
+  .paytable{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  .payrow{display:grid; grid-template-columns:1fr auto auto; gap:12px; padding:11px 13px;
+    border-top:1px solid var(--line); font-size:13.5px; align-items:baseline}
+  .payrow:first-child{border-top:0}
+  .payrow span:nth-child(2){color:var(--muted); font-size:12.5px}
+  .payrow span:last-child{font-weight:600; min-width:82px; text-align:right}
+  .payrow--tot{background:var(--card2); font-family:var(--display); font-weight:700; font-size:15px}
+  .payrow--tot span:last-child{color:var(--amber)}
+
+  .shead{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:20px 2px 10px}
+  .foot{margin-top:24px; padding-top:14px; border-top:1px solid var(--line); font-size:11.5px; color:var(--faint); line-height:1.5}
+  .link{background:none; border:0; color:var(--muted); font-family:var(--body); font-size:12.5px; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+  .link:hover{color:var(--ink)}
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script>
+/* ===================== MODÈLE ===================== */
+const KINDS={
+  C:{lab:"Conduite",  sym:"🕘", letter:"C", color:"var(--drive)"},
+  T:{lab:"Autres tâches", sym:"⚒", letter:"T", color:"var(--work)"},
+  D:{lab:"Disposition", sym:"▭", letter:"D", color:"#8C6FE0"},
+  P:{lab:"Pause",     sym:"▭", letter:"P", color:"var(--pause)"},
+  R:{lab:"Repos",     sym:"🛏", letter:"R", color:"var(--rest)"}
+};
+const KEY="rse_tool_v1";
+
+let store = load();
+let state = { tab:"jour", kind:"C", editDay:todayISO() };
+
+function load(){
+  try{ const r=JSON.parse(localStorage.getItem(KEY)); if(r&&r.days) return r; }catch(e){}
+  return { days:{}, opts:{ ext10:0, red9:0, weekRestRed:false, statut:"longue" } };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+
+/* Tout l'outil raisonne en UTC, comme le chronotachygraphe. */
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+/* Heure française correspondante (Europe/Paris gère l'heure d'été automatiquement). */
+const FR_FMT = new Intl.DateTimeFormat("fr-FR",{timeZone:"Europe/Paris",hour:"2-digit",minute:"2-digit",hour12:false});
+function frFromTs(ts){ try{ return FR_FMT.format(new Date(ts)); }catch(e){ return ""; } }
+/* minutes UTC d'un jour donné -> heure française */
+function frFromMin(min, dayKey){
+  const key = dayKey || state.editDay || todayISO();
+  const [y,m,d]=key.split("-").map(Number);
+  const ts = Date.UTC(y, m-1, d, 0, 0, 0) + Math.round(min)*60000;
+  return frFromTs(ts);
+}
+function frSeason(){
+  const off=frOffsetHours();
+  return off>=2 ? "heure d'été" : "heure d'hiver";
+}
+function frOffsetHours(){
+  const n=new Date();
+  const utc=n.getUTCHours()*60+n.getUTCMinutes();
+  const fr=frFromTs(n.getTime()).split(":");
+  let diff=(+fr[0]*60 + +fr[1]) - utc;
+  if(diff<-720) diff+=1440; if(diff>720) diff-=1440;
+  return Math.round(diff/60);
+}
+function nowUTCmin(){ const d=new Date(); return d.getUTCHours()*60+d.getUTCMinutes(); }
+function dayList(){ return store.days[state.editDay] || []; }
+function setDay(v){ store.days[state.editDay]=v; save(); }
+
+/* ---- temps en minutes depuis 00:00, gestion du passage minuit ---- */
+function toMin(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
+function fmt(min){
+  if(min<0) min=0;
+  const h=Math.floor(min/60), m=Math.round(min%60);
+  return h>0 ? `${h} h ${String(m).padStart(2,"0")}` : `${m} min`;
+}
+function fmtShort(min){
+  const h=Math.floor(min/60), m=Math.round(min%60);
+  return `${h}:${String(m).padStart(2,"0")}`;
+}
+function clock(min){
+  min=((min%1440)+1440)%1440;
+  return `${String(Math.floor(min/60)).padStart(2,"0")}:${String(min%60).padStart(2,"0")}`;
+}
+/* durée d'un segment, en tolérant le passage de minuit */
+function dur(s){ let d=s.end-s.start; if(d<0) d+=1440; return d; }
+/* Chronologie réelle : on suit l'ordre de saisie et on ajoute 24 h
+   chaque fois que l'heure recule — un service de nuit passe minuit. */
+function chrono(list){
+  let prevEnd=-Infinity;
+  return list.map(s=>{
+    let st=s.start;
+    while(st<prevEnd) st+=1440;
+    const d=dur(s);
+    prevEnd=st+d;
+    return Object.assign({}, s, {abs:st, d:d});
+  });
+}
+function sorted(list){ return chrono(list); }
+
+/* Minutes d'un segment tombant dans la période nocturne (21 h – 6 h). */
+function nightMinutes(s){
+  const start=(s.abs!==undefined?s.abs:s.start), d=(s.d!==undefined?s.d:dur(s));
+  let n=0;
+  for(let t=0;t<d;t++){
+    const m=(start+t)%1440;
+    if(m>=1260 || m<360) n++;   // 21:00–24:00 ou 00:00–06:00
+  }
+  return n;
+}
+
+/* ===================== RSF — durées de service (France) ===================== */
+/* Décret 83-40 et convention collective des transports routiers de marchandises. */
+const STATUTS={
+  longue:   {lab:"Grand routier",   sub:"longue distance", sem:56, moy:53, mois:220, contingent:195},
+  courte:   {lab:"Courte distance", sub:"marchandises",    sem:48, moy:44, mois:186, contingent:130},
+  messagerie:{lab:"Messagerie",     sub:"convoyeur",       sem:48, moy:44, mois:169, contingent:130}
+};
+function statut(){ return STATUTS[store.opts.statut] || STATUTS.longue; }
+
+/* ===================== CALCULS RSE ===================== */
+/* Règlement (CE) 561/2006 — conduite, pauses, repos. */
+function analyse(list){
+  const segs=chrono(list);
+  const r={
+    drive:0, work:0, pause:0, rest:0,
+    contDrive:0,        // conduite depuis la dernière pause qualifiante
+    sinceLastValid:0,
+    amplitudeStart:null, amplitudeEnd:null,
+    alerts:[], lastRest:null, pauseFrag:[], night:0, dispo:0
+  };
+  let frag15=false;     // un fragment de 15 min déjà pris
+  segs.forEach(s=>{
+    const d=s.d;
+    if(s.kind==="C"){
+      r.drive+=d; r.contDrive+=d;
+      if(r.contDrive>270 && !r.alerts.find(a=>a.id==="cont")){
+        r.alerts.push({id:"cont", lvl:"bad",
+          txt:`Conduite continue de ${fmt(r.contDrive)} sans pause valable. La limite est de 4 h 30.`});
+      }
+    } else if(s.kind==="D"){
+      r.dispo+=d;
+    } else if(s.kind==="T"){
+      r.work+=d;
+      // les autres tâches n'interrompent pas la conduite continue mais ne comptent pas comme pause
+    } else if(s.kind==="P"){
+      r.pause+=d;
+      if(d>=45){ r.contDrive=0; frag15=false; }
+      else if(d>=30 && frag15){ r.contDrive=0; frag15=false; }
+      else if(d>=15){ frag15=true; }
+    } else if(s.kind==="R"){
+      r.rest+=d; r.contDrive=0; frag15=false; r.lastRest=s;
+    }
+    if(s.kind==="C"||s.kind==="T"){ r.night += nightMinutes(s); }
+    if(r.amplitudeStart===null) r.amplitudeStart=s.abs;
+    r.amplitudeEnd=s.abs+d;
+  });
+  r.service = r.drive + r.work;
+  r.amplitude = (r.amplitudeEnd!==null && r.amplitudeStart!==null) ? (r.amplitudeEnd-r.amplitudeStart) : 0;
+  if(r.amplitude>1440){ r.amplitudeOver=true; r.amplitude=1440; }
+
+  // conduite journalière
+  const maxDrive = store.opts.ext10>0 ? 600 : 540;
+  if(r.drive>600){
+    r.alerts.push({id:"d10", lvl:"bad", txt:`Conduite journalière de ${fmt(r.drive)} : au-delà des 10 h maximum absolues.`});
+  } else if(r.drive>540){
+    r.alerts.push({id:"d9", lvl:"warn",
+      txt:`Conduite de ${fmt(r.drive)} : tu utilises une extension à 10 h. Maximum 2 fois par semaine.`});
+  }
+  // travail de nuit : dès qu'une partie du travail tombe entre 21 h et 6 h,
+  // la durée quotidienne de travail est plafonnée à 10 h au lieu de 12 h.
+  r.isNight = r.night>0;
+  r.maxService = r.isNight ? 600 : 720;
+  if(r.service>r.maxService){
+    r.alerts.push({id:"night", lvl:"bad",
+      txt: r.isNight
+        ? `Travail de nuit : ${fmt(r.night)} entre 21 h et 6 h. La journée de travail est plafonnée à 10 h, tu es à ${fmt(r.service)}.`
+        : `Travail de ${fmt(r.service)} : la durée quotidienne maximale est de 12 h.`});
+  } else if(r.isNight && r.service>540){
+    r.alerts.push({id:"night-w", lvl:"warn",
+      txt:`Travail de nuit (${fmt(r.night)} entre 21 h et 6 h) : plafond ramené à 10 h. Il te reste ${fmt(600-r.service)}.`});
+  } else if(r.isNight){
+    r.alerts.push({id:"night-i", lvl:"warn",
+      txt:`Travail de nuit détecté : ${fmt(r.night)} entre 21 h et 6 h. Plafond de travail ramené à 10 h, majoration de 20 % et repos compensateur.`});
+  }
+
+  // pause de travail (directive 2002/15)
+  if(r.service>540 && r.pause<45){
+    r.alerts.push({id:"w9", lvl:"warn", txt:`Plus de 9 h de travail : 45 min de pause au total sont requises (tu en as ${fmt(r.pause)}).`});
+  } else if(r.service>360 && r.pause<30){
+    r.alerts.push({id:"w6", lvl:"warn", txt:`Plus de 6 h de travail : 30 min de pause au total sont requises (tu en as ${fmt(r.pause)}).`});
+  }
+  // amplitude
+  if(r.amplitudeOver){
+    r.alerts.push({id:"ampx", lvl:"warn", txt:"La journée dépasse 24 h : vérifie les horaires dans l'onglet Journée, un segment semble mal placé."});
+  } else if(r.amplitude>840){
+    r.alerts.push({id:"amp14", lvl:"bad", txt:`Amplitude de ${fmt(r.amplitude)} : le maximum absolu est de 14 h.`});
+  } else if(r.amplitude>720){
+    r.alerts.push({id:"amp12", lvl:"warn", txt:`Amplitude de ${fmt(r.amplitude)} : la limite est de 12 h, extensible à 14 h avec repos compensateur.`});
+  }
+  return r;
+}
+
+/* Verdict principal : que puis-je faire maintenant ? */
+function verdict(a, list){
+  if(!list.length){
+    return {lvl:"ok", t:"Journée vide", d:"Ajoute ta première activité pour lancer le calcul."};
+  }
+  if(a.alerts.some(x=>x.lvl==="bad")){
+    return {lvl:"bad", t:"Tu es en infraction", d:"Corrige la situation avant de reprendre la route."};
+  }
+  const restCont = 270 - a.contDrive;
+  if(restCont<=0){
+    return {lvl:"bad", t:"Pause obligatoire maintenant", d:"45 min d'un bloc, ou 15 min puis 30 min."};
+  }
+  if(restCont<=30){
+    return {lvl:"warn", t:`Pause dans ${fmt(restCont)}`, d:"Prépare ton arrêt : aire ou parking en vue."};
+  }
+  const restWork = a.maxService - a.service;
+  if(restWork<=0){
+    return {lvl:"bad", t:"Journée de travail épuisée",
+      d: a.isNight ? "Plafond de 10 h atteint : tu as travaillé de nuit." : "Plafond de 12 h atteint."};
+  }
+  const restDay = (store.opts.ext10>0?600:540) - a.drive;
+  if(restDay<=0){
+    return {lvl:"bad", t:"Conduite journalière épuisée", d:"Tu dois prendre ton repos journalier."};
+  }
+  if(restDay<=45){
+    return {lvl:"warn", t:`Plus que ${fmt(restDay)} de conduite`, d:"Anticipe ton lieu de stationnement pour la nuit."};
+  }
+  return {lvl:"ok", t:"Tu peux rouler", d:`Encore ${fmt(restCont)} avant la pause, ${fmt(restDay)} sur la journée.`};
+}
+
+
+
+/* ===================== CHAÎNE DES REPOS (multi-journées) =====================
+   Reconstruit une frise absolue à partir de toutes les journées saisies,
+   repère les repos et en déduit : échéance des 24 h, repos réduits consommés,
+   périodes écoulées depuis le dernier repos hebdomadaire. */
+
+function dayStartTs(key){ const [y,m,d]=key.split("-").map(Number); return Date.UTC(y,m-1,d,0,0,0); }
+
+/* Tous les segments de toutes les journées, en millisecondes absolues. */
+function allSegments(){
+  const out=[];
+  Object.keys(store.days).sort().forEach(key=>{
+    const base=dayStartTs(key);
+    chrono(store.days[key]||[]).forEach(s=>{
+      out.push({kind:s.kind, from:base+s.abs*60000, to:base+(s.abs+s.d)*60000, day:key});
+    });
+  });
+  return out.sort((a,b)=>a.from-b.from);
+}
+
+/* Fusionne les repos contigus (un repos coupé en deux saisies reste un seul repos). */
+function restBlocks(){
+  const segs=allSegments().filter(s=>s.kind==="R");
+  const out=[];
+  segs.forEach(s=>{
+    const last=out[out.length-1];
+    if(last && s.from-last.to<=5*60000){ last.to=Math.max(last.to,s.to); }
+    else out.push({from:s.from, to:s.to});
+  });
+  return out.map(r=>Object.assign(r,{h:(r.to-r.from)/3600000}));
+}
+
+function fmtWhen(ts){
+  const d=new Date(ts), n=new Date();
+  const key=x=>x.toISOString().slice(0,10);
+  const hh=`${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`;
+  const fr=` <span class="fr">(${frFromTs(ts)} FR)</span>`;
+  if(key(d)===key(n)) return `aujourd'hui à ${hh} UTC${fr}`;
+  if(key(d)===key(new Date(n.getTime()+86400000))) return `demain à ${hh} UTC${fr}`;
+  return `le ${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")} à ${hh} UTC${fr}`;
+}
+
+function chainState(){
+  const rests=restBlocks();
+  const segs=allSegments();
+  const r={ hasData:segs.length>0, lastRest:null, reduced:0, weekly:null, since24:null };
+  if(!rests.length) return r;
+
+  const last=rests[rests.length-1];
+  r.lastRest=last;
+
+  // dernier repos hebdomadaire = dernier bloc d'au moins 24 h
+  for(let i=rests.length-1;i>=0;i--){ if(rests[i].h>=24){ r.weekly=rests[i]; r.weeklyIndex=i; break; } }
+
+  // repos journaliers réduits depuis le dernier repos hebdomadaire
+  const start = r.weekly ? r.weeklyIndex+1 : 0;
+  r.reduced = rests.slice(start).filter(x=>x.h>=9 && x.h<11).length;
+
+  // échéance des 24 h : le prochain repos doit être ACHEVÉ dans les 24 h
+  // qui suivent la fin du repos précédent.
+  r.deadline24 = last.to + 24*3600000;
+  r.startBy11  = r.deadline24 - 11*3600000;
+  r.startBy9   = r.deadline24 - 9*3600000;
+
+  // repos hebdomadaire : au plus tard après 6 périodes de 24 h
+  if(r.weekly){
+    r.weeklyDeadline = r.weekly.to + 6*24*3600000;
+    r.weeklyElapsed  = (Date.now()-r.weekly.to)/3600000;
+    r.weeklyKind = r.weekly.h>=45 ? "normal" : "réduit";
+    r.weeklyToCompensate = r.weekly.h<45 ? (45-r.weekly.h) : 0;
+  }
+  return r;
+}
+
+/* Bandeau « quel repos, et quand » */
+function restPlanHTML(){
+  const c=chainState();
+  if(!c.hasData) return "";
+  if(!c.lastRest){
+    return `<div class="alert alert--warn"><span class="alert__i">!</span><span>
+      Aucun repos saisi. Ajoute une activité <b>Repos</b> à la fin de ta journée pour que l'outil calcule tes échéances.</span></div>`;
+  }
+  const now=Date.now();
+  const leftTo11=(c.startBy11-now)/60000;
+  const leftTo9 =(c.startBy9 -now)/60000;
+  const canReduce = store.opts.red9 < 3 || c.reduced < 3;
+  const lvl = leftTo9<=0 ? "bad" : leftTo11<=60 ? "warn" : "ok";
+
+  return `<div class="restplan restplan--${lvl}">
+    <div class="restplan__head">
+      <span class="eyebrow">Prochain repos journalier</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${c.reduced}/3 réduits utilisés</span>
+    </div>
+    <div class="restplan__grid">
+      <div class="rp">
+        <div class="rp__k">Repos normal · 11 h</div>
+        <div class="rp__v ${leftTo11<=0?"bad":leftTo11<=60?"warn":"ok"}">Commencer avant ${fmtWhen(c.startBy11)}</div>
+        <div class="rp__s">${leftTo11>0?`il te reste ${fmt(leftTo11)}`:"échéance dépassée"}</div>
+      </div>
+      <div class="rp">
+        <div class="rp__k">Repos réduit · 9 h ${canReduce?"":"— quota épuisé"}</div>
+        <div class="rp__v ${leftTo9<=0?"bad":leftTo9<=60?"warn":"ok"}">Commencer avant ${fmtWhen(c.startBy9)}</div>
+        <div class="rp__s">${c.reduced>=3?"3 réduits déjà pris : repos normal obligatoire":`${3-c.reduced} réduit${3-c.reduced>1?"s":""} encore possible${3-c.reduced>1?"s":""}`}</div>
+      </div>
+    </div>
+    <div class="restplan__foot">Dernier repos terminé ${fmtWhen(c.lastRest.to)} · durée ${fmt(c.lastRest.h*60)}.
+      Le prochain doit être <b>achevé</b> ${fmtWhen(c.deadline24)}.</div>
+  </div>`;
+}
+
+/* Bandeau repos hebdomadaire */
+function weeklyPlanHTML(){
+  const c=chainState();
+  if(!c.hasData || !c.weekly) return `<div class="alert alert--warn"><span class="alert__i">!</span><span>
+    Aucun repos hebdomadaire détecté. Saisis un repos d'au moins 24 h pour lancer le décompte des 6 périodes.</span></div>`;
+  const left=(c.weeklyDeadline-Date.now())/3600000;
+  const lvl = left<=0 ? "bad" : left<=24 ? "warn" : "ok";
+  const pct=Math.min(100, Math.max(0, Math.round(c.weeklyElapsed/144*100)));
+  return `<div class="restplan restplan--${lvl}">
+    <div class="restplan__head">
+      <span class="eyebrow">Prochain repos hebdomadaire</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">dernier : ${esc(c.weeklyKind)} ${Math.round(c.weekly.h)} h</span>
+    </div>
+    <div class="rp__v ${lvl}" style="font-size:17px; margin-top:6px">Doit débuter avant ${fmtWhen(c.weeklyDeadline)}</div>
+    <div class="rp__s">${left>0?`il te reste ${fmt(left*60)}`:"échéance dépassée"} · ${Math.floor(c.weeklyElapsed/24)} période${Math.floor(c.weeklyElapsed/24)>1?"s":""} de 24 h écoulée${Math.floor(c.weeklyElapsed/24)>1?"s":""} sur 6</div>
+    <div class="gauge" style="margin-top:11px">
+      <div class="gauge__bar"><i style="width:${pct}%; background:${lvl==="bad"?"var(--bad)":lvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0</span><span>3 périodes</span><span>6 périodes</span></div>
+    </div>
+    ${c.weeklyToCompensate>0?`<div class="restplan__foot">Ton dernier repos hebdomadaire était réduit : <b>${fmt(c.weeklyToCompensate*60)}</b> à compenser en un seul bloc, rattaché à un repos d'au moins 9 h, avant la fin de la 3ᵉ semaine qui suit.</div>`:""}
+  </div>`;
+}
+
+
+/* ===================== RSF — cumuls mois et trimestre ===================== */
+function serviceOf(key){ const a=analyse(store.days[key]||[]); return a.service; }
+
+/* Service par mois calendaire : {"2026-08": minutes} */
+function monthTotals(){
+  const out={};
+  Object.keys(store.days).forEach(k=>{
+    const m=k.slice(0,7);
+    out[m]=(out[m]||0)+serviceOf(k);
+  });
+  return out;
+}
+/* Moyenne hebdomadaire sur les 12 dernières semaines glissantes */
+function quarterAvg(){
+  const now=new Date();
+  const from=now.getTime()-84*86400000;   // 12 semaines
+  let total=0, firstTs=null;
+  Object.keys(store.days).forEach(k=>{
+    const ts=dayStartTs(k);
+    if(ts>=from){ total+=serviceOf(k); if(firstTs===null||ts<firstTs) firstTs=ts; }
+  });
+  if(firstTs===null) return {avg:0, weeks:0, total:0};
+  const weeks=Math.max(1, Math.ceil((now.getTime()-firstTs)/(7*86400000)));
+  return {avg: total/weeks, weeks, total};
+}
+function monthKey(){ return new Date().toISOString().slice(0,7); }
+function monthLabel(k){
+  const M=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  const [y,m]=k.split("-").map(Number);
+  return `${M[m-1]} ${y}`;
+}
+
+function rsfCumulsHTML(){
+  const st=statut();
+  const mt=monthTotals(), mk=monthKey();
+  const mois=mt[mk]||0, moisMax=st.mois*60;
+  const q=quarterAvg(), moyMax=st.moy*60;
+  const mLvl = mois>moisMax ? "bad" : mois>moisMax*0.9 ? "warn" : "ok";
+  const qLvl = q.avg>moyMax ? "bad" : q.avg>moyMax*0.95 ? "warn" : "ok";
+  return `
+  <div class="shead"><span class="eyebrow">Cumuls réglementaires</span></div>
+  <div class="restplan restplan--${mLvl}">
+    <div class="restplan__head">
+      <span class="eyebrow">Service du mois — ${esc(monthLabel(mk))}</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${esc(st.lab)}</span>
+    </div>
+    <div class="rp__v ${mLvl}" style="font-size:24px">${fmtShort(mois)} <span style="font-size:14px; color:var(--muted)">/ ${st.mois} h</span></div>
+    <div class="rp__s">${mois>moisMax?`dépassement de ${fmt(mois-moisMax)}`:`il te reste ${fmt(moisMax-mois)} ce mois-ci`}</div>
+    <div class="gauge" style="margin-top:10px">
+      <div class="gauge__bar"><i style="width:${Math.min(100,Math.round(mois/moisMax*100))}%; background:${mLvl==="bad"?"var(--bad)":mLvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>${Math.round(st.mois/2)} h</span><span>${st.mois} h</span></div>
+    </div>
+  </div>
+  <div class="restplan restplan--${qLvl}">
+    <div class="restplan__head">
+      <span class="eyebrow">Moyenne trimestrielle</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${q.weeks} semaine${q.weeks>1?"s":""} saisie${q.weeks>1?"s":""}</span>
+    </div>
+    <div class="rp__v ${qLvl}" style="font-size:24px">${fmtShort(q.avg)} <span style="font-size:14px; color:var(--muted)">/ ${st.moy} h par semaine</span></div>
+    <div class="rp__s">${q.weeks<12?`calcul partiel : la moyenne se juge sur 12 semaines`:`sur les 12 dernières semaines`}</div>
+    <div class="gauge" style="margin-top:10px">
+      <div class="gauge__bar"><i style="width:${Math.min(100,Math.round(q.avg/moyMax*100))}%; background:${qLvl==="bad"?"var(--bad)":qLvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>${Math.round(st.moy/2)} h</span><span>${st.moy} h moyenne</span></div>
+    </div>
+  </div>`;
+}
+
+
+/* ===================== IMPORT DEPUIS UN TICKET =====================
+   Formats acceptés, une activité par ligne :
+     C 06:30-10:30      |  06:30-10:30 C
+     06:30 C            (mode rafale : chaque heure clôt l'activité précédente)
+   Symboles tolérés : C/conduite/volant, T/travail/autres/marteau,
+                      P/pause/coupure, R/repos/lit. */
+function parseTicket(txt){
+  const out=[], errs=[];
+  const kindOf=w=>{
+    w=(w||"").toLowerCase().trim();
+    if(!w) return null;
+    // mots entiers
+    if(/volant|conduit|drive/.test(w)) return "C";
+    if(/marteau|autre|trav|work/.test(w)) return "T";
+    if(/dispo|attente|presence/.test(w)) return "D";
+    if(/pause|coupure/.test(w)) return "P";
+    if(/repos|lit|sommeil|couchette/.test(w)) return "R";
+    // symboles des tickets : ⊙/o/0 = volant, ⚒/x/* = marteaux, ▭/□ = disponibilité, h/lit = repos
+    if(/[⊙◎©oO0@]/.test(w)) return "C";
+    if(/[⚒✕✖✗xX*×]/.test(w)) return "T";
+    if(/[▭▬□■]/.test(w)) return "D";
+    if(/[🛏▤hH]/.test(w)) return "R";
+    const c=w.replace(/[^a-z]/g,"")[0];
+    if(c==="c") return "C";
+    if(c==="t") return "T";
+    if(c==="p") return "P";
+    if(c==="d") return "D";
+    if(c==="r") return "R";
+    return null;
+  };
+
+  const rows=[];
+  txt.split(/[\n;]+/).forEach((raw,i)=>{
+    const line=raw.trim();
+    if(!line) return;
+    // heures d'horloge : HH:MM  ·  durées du ticket : HHhMM (ignorées)
+    const clock=(line.match(/\b([01]?\d|2[0-3])\s*:\s*([0-5]\d)\b/g)||[]);
+    const loose=(line.match(/\b([01]?\d|2[0-3])\s*[hH.]\s*([0-5]\d)\b/g)||[]);
+    let times = clock.length ? clock : loose;      // si des HH:MM existent, les durées HHhMM sont écartées
+    if(clock.length && clock.length===1 && loose.length){
+      // une seule heure d'horloge : activité en cours, la durée reste ignorée
+      times=clock;
+    }
+    const norm=t=>{ const m=t.match(/(\d{1,2})\s*[:hH.]\s*(\d{2})/); return String(+m[1]).padStart(2,"0")+":"+m[2]; };
+    // le symbole est ce qui précède la première heure
+    const head=line.split(/\b\d{1,2}\s*[:hH.]\s*\d{2}/)[0];
+    const k=kindOf(head) || kindOf((line.match(/\b([CTPR])\b/i)||[])[1]||"");
+    if(!times.length) return;   // en-tête, kilométrage, VIN : on ignore
+    if(/^\s*\?/.test(line)){ errs.push(`Période sans carte insérée détectée (${times.map(norm).join(" → ")}) : à saisir toi-même.`); return; }
+    if(!k){ errs.push(`Ligne ${i+1} : activité non reconnue (attendu C, T, P ou R).`); return; }
+    rows.push({k, times:times.map(norm)});
+  });
+
+  const single = rows.length>1 && rows.every(r=>r.times.length===1);
+  if(single){
+    for(let i=0;i<rows.length-1;i++){
+      out.push({kind:rows[i].k, start:toMin(rows[i].times[0]), end:toMin(rows[i+1].times[0])});
+    }
+    errs.push(`Mode rafale : la dernière ligne (${rows[rows.length-1].times[0]}) sert de fin, elle n'est pas ajoutée.`);
+  } else {
+    rows.forEach((r,i)=>{
+      if(r.times.length<2){ errs.push(`Ligne ${i+1} : il manque l'heure de fin.`); return; }
+      out.push({kind:r.k, start:toMin(r.times[0]), end:toMin(r.times[1])});
+    });
+  }
+  return {segs:out, errs};
+}
+
+function applyTicket(){
+  const ta=document.getElementById("ticket");
+  if(!ta) return;
+  const {segs,errs}=parseTicket(ta.value);
+  const box=document.getElementById("ticketmsg");
+  if(!segs.length){
+    if(box) box.innerHTML=`<div class="alert alert--bad"><span class="alert__i">⚠</span><span>Aucune activité lue.${errs.length?" "+esc(errs.slice(0,2).join(" ")):""}</span></div>`;
+    return;
+  }
+  const mode=document.getElementById("ticketmode");
+  const replace = mode && mode.checked;
+  const list = replace ? [] : dayList().slice();
+  segs.forEach((s,i)=>list.push({id:Date.now()+"-"+i+"-"+Math.random().toString(36).slice(2,5), kind:s.kind, start:s.start, end:s.end}));
+  setDay(list);
+  state.ticketMsg = `${segs.length} activité${segs.length>1?"s":""} ${replace?"importée":"ajoutée"}${segs.length>1?"s":""}.${errs.length?" "+errs.join(" "):""}`;
+  render();
+}
+
+function ticketHTML(){
+  return `<div class="adder">
+    <div class="eyebrow" style="margin-bottom:8px">Importer un ticket <span style="color:var(--amber)">· heures UTC</span></div>
+    <p style="font-size:12.5px; color:var(--muted); margin:0 0 10px; line-height:1.5">
+      Une activité par ligne : <span class="num">C 06:30-10:30</span>, ou la suite des bascules
+      (<span class="num">06:30 C</span> puis <span class="num">10:30 P</span>…).
+      Tu peux aussi coller les lignes brutes du ticket
+      (<span class="num">o 14:14 14:18 00h04</span>) : les symboles ⊙ o volant, ⚒ x marteaux,
+      h lit et ▭ disponibilité sont reconnus, les durées et les kilométrages ignorés.</p>
+    <textarea id="ticket" rows="5" placeholder="T 06:00-06:30&#10;C 06:30-10:30&#10;P 10:30-11:15&#10;C 11:15-14:00"></textarea>
+    <label class="chk"><input type="checkbox" id="ticketmode"> Remplacer la journée au lieu d'ajouter</label>
+    <button class="btn btn--primary" style="width:100%; margin-top:10px" data-a="ticket">Remplir la journée</button>
+    <div id="ticketmsg">${state.ticketMsg?`<div class="alert alert--ok" style="margin-top:10px"><span class="alert__i">✓</span><span>${esc(state.ticketMsg)}</span></div>`:""}</div>
+  </div>`;
+}
+
+
+/* ===================== RÉCAP MENSUEL & RÉMUNÉRATION ===================== */
+function monthKeys(){
+  const ks=[...new Set(Object.keys(store.days).map(k=>k.slice(0,7)))].sort().reverse();
+  if(!ks.length) ks.push(monthKey());
+  return ks;
+}
+function monthDetail(mk){
+  const t={drive:0, work:0, dispo:0, pause:0, rest:0, night:0, service:0, days:0};
+  Object.keys(store.days).filter(k=>k.startsWith(mk)).forEach(k=>{
+    const a=analyse(store.days[k]||[]);
+    t.drive+=a.drive; t.work+=a.work; t.dispo+=a.dispo;
+    t.pause+=a.pause; t.rest+=a.rest; t.night+=a.night;
+    t.service+=a.service;
+    if((store.days[k]||[]).length) t.days++;
+  });
+  return t;
+}
+/* Estimation indicative : base 151,67 h, majorations 25 % puis 50 %,
+   disposition à 50 %* et nuit majorée de 20 %. */
+function payEstimate(t){
+  const taux = parseFloat(store.opts.taux||0) || 0;
+  const base = 151.67*60;                        // 35 h/semaine mensualisées
+  const svc  = t.service;                        // conduite + autres tâches
+  const norm = Math.min(svc, base);
+  const sup  = Math.max(0, svc-base);
+  const sup25= Math.min(sup, 8*4.33*60);         // jusqu'à 43 h/semaine
+  const sup50= Math.max(0, sup-sup25);
+  const dispoPaid = t.dispo*(parseFloat(store.opts.dispoRate||50)/100);
+  const h=m=>m/60;
+  const eur = {
+    base:  h(norm)*taux,
+    s25:   h(sup25)*taux*1.25,
+    s50:   h(sup50)*taux*1.50,
+    dispo: h(dispoPaid)*taux,
+    nuit:  h(t.night)*taux*0.20
+  };
+  eur.total = eur.base+eur.s25+eur.s50+eur.dispo+eur.nuit;
+  return {taux, norm, sup25, sup50, dispoPaid, eur};
+}
+function euro(v){ return (Math.round(v*100)/100).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
+
+function viewMois(){
+  const mk = state.mois || monthKey();
+  const t  = monthDetail(mk);
+  const st = statut();
+  const p  = payEstimate(t);
+  const moisMax=st.mois*60;
+  const lvl = t.service>moisMax ? "bad" : t.service>moisMax*0.9 ? "warn" : "ok";
+  const ks = monthKeys();
+  return `${header()}
+  <div class="shead" style="margin-top:0"><span class="eyebrow">Mois</span>
+    <select class="msel" data-a="mois">${ks.map(k=>`<option value="${k}" ${k===mk?"selected":""}>${esc(monthLabel(k))}</option>`).join("")}</select>
+  </div>
+
+  <div class="verdict verdict--${lvl}">
+    <div class="verdict__head"><span class="eyebrow">Temps de service</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${t.days} journée${t.days>1?"s":""}</span></div>
+    <div class="verdict__t ${lvl}">${fmtShort(t.service)} <span style="font-size:15px; color:var(--muted)">/ ${st.mois} h</span></div>
+    <div class="verdict__d">${esc(st.lab)} — conduite et autres tâches. La mise à disposition est comptée à part.</div>
+    <div class="gauge">
+      <div class="gauge__bar"><i style="width:${Math.min(100,Math.round(t.service/moisMax*100))}%; background:${lvl==="bad"?"var(--bad)":lvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>${Math.round(st.mois/2)} h</span><span>${st.mois} h</span></div>
+    </div>
+  </div>
+
+  <div class="meters">
+    <div class="meter" style="border-left:3px solid var(--drive)">
+      <div class="meter__k">Conduite</div><div class="meter__v">${fmtShort(t.drive)}</div></div>
+    <div class="meter" style="border-left:3px solid var(--work)">
+      <div class="meter__k">Autres tâches</div><div class="meter__v">${fmtShort(t.work)}</div></div>
+    <div class="meter" style="border-left:3px solid var(--dispo)">
+      <div class="meter__k">Mise à disposition</div><div class="meter__v">${fmtShort(t.dispo)}</div></div>
+    <div class="meter" style="border-left:3px solid var(--amber)">
+      <div class="meter__k">Dont heures de nuit</div><div class="meter__v">${fmtShort(t.night)}</div></div>
+  </div>
+
+  <div class="shead"><span class="eyebrow">Estimation de rémunération</span></div>
+  <div class="adder">
+    <div class="times">
+      <div class="fld"><label for="taux">Taux horaire brut (€)</label>
+        <input id="taux" type="number" step="0.01" min="0" value="${store.opts.taux||""}" placeholder="12.50"></div>
+      <div class="fld"><label for="dispoRate">Disposition payée à (%)</label>
+        <input id="dispoRate" type="number" step="5" min="0" max="100" value="${store.opts.dispoRate||50}"></div>
+      <button class="btn btn--primary" data-a="pay">Calculer</button>
+    </div>
+  </div>
+
+  ${p.taux>0?`
+  <div class="paytable">
+    <div class="payrow"><span>Heures normales</span><span class="num">${fmtShort(p.norm)}</span><span class="num">${euro(p.eur.base)}</span></div>
+    <div class="payrow"><span>Heures sup. à 25 %</span><span class="num">${fmtShort(p.sup25)}</span><span class="num">${euro(p.eur.s25)}</span></div>
+    <div class="payrow"><span>Heures sup. à 50 %</span><span class="num">${fmtShort(p.sup50)}</span><span class="num">${euro(p.eur.s50)}</span></div>
+    <div class="payrow"><span>Disposition (${store.opts.dispoRate||50} %)</span><span class="num">${fmtShort(t.dispo)}</span><span class="num">${euro(p.eur.dispo)}</span></div>
+    <div class="payrow"><span>Majoration de nuit (20 %)</span><span class="num">${fmtShort(t.night)}</span><span class="num">${euro(p.eur.nuit)}</span></div>
+    <div class="payrow payrow--tot"><span>Estimation brute</span><span></span><span class="num">${euro(p.eur.total)}</span></div>
+  </div>
+  <div class="alert alert--warn" style="margin-top:11px"><span class="alert__i">!</span><span>
+    Estimation indicative seulement : elle ignore les primes, les frais de route, le forfait des grands routiers et les règles propres à ta convention. Elle ne remplace pas ton bulletin de paie.</span></div>
+  `:`<div class="empty">Saisis ton taux horaire brut pour obtenir une estimation.</div>`}
+
+  <div class="foot">Toutes les heures sont exprimées en UTC. Outil d'aide au calcul, sans valeur juridique.</div>`;
+}
+
+/* ===================== VUES ===================== */
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+function header(){
+  return `<div class="top">
+    <div class="mark">RSE</div>
+    <div>
+      <h1>Temps de conduite et de repos</h1>
+      <div class="sub">RSE 561/2006 · RSF — <b style="color:var(--amber)">toutes les heures en UTC</b></div>
+    </div>
+  </div>
+  <div class="tabs tabs--4" role="group" aria-label="Sections">
+    <button data-a="tab" data-v="jour" aria-pressed="${state.tab==="jour"}">Journée</button>
+    <button data-a="tab" data-v="semaine" aria-pressed="${state.tab==="semaine"}">Semaine</button>
+    <button data-a="tab" data-v="mois" aria-pressed="${state.tab==="mois"}">Mois</button>
+    <button data-a="tab" data-v="regles" aria-pressed="${state.tab==="regles"}">Règles</button>
+  </div>`;
+}
+
+function gaugeHTML(a){
+  const used=Math.min(a.contDrive,270), pct=Math.round(used/270*100);
+  const left=270-a.contDrive;
+  const col = left<=0 ? "var(--bad)" : left<=30 ? "var(--amber)" : "var(--ok)";
+  return `<div class="gauge">
+    <div class="gauge__row">
+      <span class="gauge__lab">Avant la pause obligatoire</span>
+      <span class="gauge__val" style="color:${col}">${left<=0?"0:00":fmtShort(left)}</span>
+    </div>
+    <div class="gauge__bar"><i style="width:${pct}%; background:${col}"></i></div>
+    <div class="gauge__ticks"><span>0:00</span><span>2:15</span><span>4:30</span></div>
+  </div>`;
+}
+
+function stripHTML(list){
+  const segs=chrono(list);
+  if(!segs.length) return "";
+  let html="", cursor=segs[0].abs;
+  segs.forEach(s=>{
+    const start=s.abs, d=s.d;
+    if(start>cursor) html+=`<div class="strip__seg" style="width:${Math.min(100,(start-cursor)/1440*100)}%; background:transparent"></div>`;
+    html+=`<div class="strip__seg" style="width:${Math.min(100,d/1440*100)}%; background:${KINDS[s.kind].color}" title="${KINDS[s.kind].lab}"></div>`;
+    cursor=start+d;
+  });
+  return `<div class="strip">
+    <div class="strip__head"><span class="eyebrow">Période de 24 h depuis la prise de service</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">amplitude ${fmtShort(analyse(list).amplitude)}</span></div>
+    <div class="strip__bar">${html}</div>
+    <div class="strip__hours"><span>${clock(segs[0].abs)}</span><span>+6 h</span><span>+12 h</span><span>+18 h</span><span>+24 h</span></div>
+    <div class="legend">
+      ${Object.entries(KINDS).map(([k,v])=>`<span><i class="dot" style="background:${v.color}"></i>${v.lab}</span>`).join("")}
+    </div>
+  </div>`;
+}
+
+function meterCls(v,warn,bad){ return v>=bad?"meter--bad":v>=warn?"meter--warn":"meter--ok"; }
+
+function viewJour(){
+  const list=dayList(), a=analyse(list), v=verdict(a,list);
+  const maxDrive=store.opts.ext10>0?600:540;
+  const rows = list.length ? sorted(list).map((s,i)=>`
+    <div class="row">
+      <div class="row__ic" style="background:${KINDS[s.kind].color}">${KINDS[s.kind].letter}</div>
+      <div class="row__t">${clock(s.abs)} → ${clock(s.abs+s.d)}<span class="fr"> (${frFromMin(s.abs)} → ${frFromMin(s.abs+s.d)})</span></div>
+      <div class="row__d">${fmtShort(s.d)}</div>
+      <button class="row__x" data-a="del" data-v="${s.id}" aria-label="Supprimer">✕</button>
+    </div>`).join("") : "";
+
+  return `${header()}
+  <div class="utcbar">
+    <span class="eyebrow">Heure UTC</span>
+    <span><span class="num" id="utcnow">${clock(nowUTCmin())}</span><span class="fr" id="frnow"> (${frFromTs(Date.now())} en France · UTC+${frOffsetHours()}, ${frSeason()})</span></span>
+  </div>
+  <div class="verdict verdict--${v.lvl}">
+    <div class="verdict__head">
+      <span class="eyebrow">État actuel</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${list.length} activité${list.length>1?"s":""}</span>
+    </div>
+    <div class="verdict__t ${v.lvl}">${esc(v.t)}</div>
+    <div class="verdict__d">${esc(v.d)}</div>
+    ${gaugeHTML(a)}
+  </div>
+
+  <div class="meters">
+    <div class="meter ${meterCls(a.drive, maxDrive-60, maxDrive)}">
+      <div class="meter__k">Conduite</div>
+      <div class="meter__v">${fmtShort(a.drive)}<small> / ${maxDrive/60} h</small></div></div>
+    <div class="meter ${meterCls(a.service, a.maxService-60, a.maxService)}">
+      <div class="meter__k">Travail${a.isNight?" · nuit":""}</div>
+      <div class="meter__v">${fmtShort(a.service)}<small> / ${a.maxService/60} h</small></div></div>
+    <div class="meter">
+      <div class="meter__k">Pauses</div>
+      <div class="meter__v">${fmtShort(a.pause)}</div></div>
+    <div class="meter ${a.amplitude>840?"meter--bad":a.amplitude>720?"meter--warn":""}">
+      <div class="meter__k">Amplitude</div>
+      <div class="meter__v">${fmtShort(a.amplitude)}<small> / 12 h</small></div></div>
+  </div>
+
+  ${a.alerts.map(x=>`<div class="alert alert--${x.lvl}"><span class="alert__i">${x.lvl==="bad"?"⚠":"!"}</span><span>${esc(x.txt)}</span></div>`).join("")}
+
+  ${restPlanHTML()}
+
+  ${stripHTML(list)}
+
+  <div class="adder">
+    <div class="eyebrow" style="margin-bottom:9px">Ajouter une activité <span style="color:var(--amber)">· heures UTC</span> <span class="fr">France = UTC +${frOffsetHours()} h (${frSeason()})</span></div>
+    <div class="kinds">
+      ${Object.entries(KINDS).map(([k,v])=>`
+        <button class="kind" data-k="${k}" data-a="kind" data-v="${k}" aria-pressed="${state.kind===k}">
+          <b>${v.letter}</b>${v.lab}</button>`).join("")}
+    </div>
+    <div class="times">
+      <div class="fld"><label for="t1">Début</label><input id="t1" type="time" value="08:00"></div>
+      <div class="fld"><label for="t2">Fin</label><input id="t2" type="time" value="12:30"></div>
+      <button class="btn btn--primary" data-a="add">Ajouter</button>
+    </div>
+  </div>
+
+  ${ticketHTML()}
+
+  ${rows ? `<div class="rows">${rows}</div>` : `<div class="empty">Aucune activité enregistrée pour cette journée.</div>`}
+
+  <div class="shead">
+    <span class="eyebrow">Dérogations utilisées</span>
+    <button class="link" data-a="clear">Vider la journée</button>
+  </div>
+  <div class="meters">
+    <div class="meter">
+      <div class="meter__k">Conduite 10 h</div>
+      <div class="meter__v">${store.opts.ext10}<small> / 2 par semaine</small></div>
+      <div style="margin-top:8px; display:flex; gap:6px">
+        <button class="btn btn--sm" data-a="ext" data-v="-1">−</button>
+        <button class="btn btn--sm" data-a="ext" data-v="1">+</button>
+      </div></div>
+    <div class="meter ${chainState().reduced>=3?"meter--bad":chainState().reduced>=2?"meter--warn":""}">
+      <div class="meter__k">Repos réduit 9 h</div>
+      <div class="meter__v">${chainState().reduced}<small> / 3 · détecté automatiquement</small></div></div>
+  </div>
+
+  <div class="foot">Toutes les heures sont exprimées en UTC, comme sur le chronotachygraphe et les tickets — ne les convertis pas en heure locale. Outil d'aide au calcul, sans valeur juridique en cas de contrôle.</div>`;
+}
+
+function viewSemaine(){
+  const days=Object.keys(store.days).sort();
+  const rows=days.map(d=>{
+    const a=analyse(store.days[d]);
+    return {d, drive:a.drive, service:a.service};
+  });
+  const week=rows.reduce((s,r)=>s+r.drive,0);
+  const service=rows.reduce((s,r)=>s+r.service,0);
+  const st=statut();
+  const semMax=st.sem*60, moyMax=st.moy*60;
+  const svLvl = service>semMax ? "bad" : service>moyMax ? "warn" : "ok";
+  const hs = Math.max(0, service-35*60);   // au-delà de 35 h : heures supplémentaires
+  const pctW=Math.min(100, Math.round(week/3360*100)); // 56 h
+  const colW = week>3360?"var(--bad)":week>3000?"var(--amber)":"var(--ok)";
+  return `${header()}
+  <div class="verdict verdict--${week>3360?"bad":week>3000?"warn":"ok"}">
+    <div class="verdict__head"><span class="eyebrow">Conduite hebdomadaire</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${rows.length} journée${rows.length>1?"s":""}</span></div>
+    <div class="verdict__t ${week>3360?"bad":week>3000?"warn":"ok"}">${fmtShort(week)} <span style="font-size:15px; color:var(--muted)">/ 56 h</span></div>
+    <div class="verdict__d">Sur deux semaines consécutives, le total ne peut pas dépasser 90 h.</div>
+    <div class="gauge">
+      <div class="gauge__bar"><i style="width:${pctW}%; background:${colW}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>28 h</span><span>56 h</span></div>
+    </div>
+  </div>
+
+  <div class="shead"><span class="eyebrow">Temps de service — réglementation française</span></div>
+  <div class="statut">
+    ${Object.entries(STATUTS).map(([k,v])=>`
+      <button class="stbtn" data-a="statut" data-v="${k}" aria-pressed="${store.opts.statut===k}">
+        <b>${esc(v.lab)}</b><span>${v.sem} h · ${v.moy} h moy.</span></button>`).join("")}
+  </div>
+  <div class="verdict verdict--${svLvl}" style="margin-bottom:14px">
+    <div class="verdict__head"><span class="eyebrow">Service cumulé</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${esc(st.lab)}</span></div>
+    <div class="verdict__t ${svLvl}">${fmtShort(service)} <span style="font-size:15px; color:var(--muted)">/ ${st.sem} h</span></div>
+    <div class="verdict__d">Moyenne à ne pas dépasser sur le trimestre : ${st.moy} h. Plafond mensuel : ${st.mois} h.</div>
+    <div class="gauge">
+      <div class="gauge__bar"><i style="width:${Math.min(100,Math.round(service/semMax*100))}%; background:${svLvl==="bad"?"var(--bad)":svLvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>${st.moy} h moyenne</span><span>${st.sem} h max</span></div>
+    </div>
+  </div>
+  <div class="meters">
+    <div class="meter"><div class="meter__k">H. supp. semaine</div>
+      <div class="meter__v">${fmtShort(hs)}<small> ${store.opts.statut==="longue"?"décompte mensuel" : "au-delà de 35 h"}</small></div></div>
+    <div class="meter"><div class="meter__k">Contingent annuel</div>
+      <div class="meter__v">${st.contingent} h</div></div>
+  </div>
+
+  ${rsfCumulsHTML()}
+
+  ${rows.length ? `<div class="rows">${rows.map(r=>`
+    <div class="row" style="grid-template-columns:1fr auto auto">
+      <div class="row__t">${r.d.split("-").reverse().join("/")}</div>
+      <div class="row__d" style="color:var(--drive)">${fmtShort(r.drive)}</div>
+      <div class="row__d">${fmtShort(r.service)}</div>
+    </div>`).join("")}</div>
+    <div class="legend" style="margin-bottom:16px">
+      <span><i class="dot" style="background:var(--drive)"></i>Conduite</span>
+      <span><i class="dot" style="background:var(--muted)"></i>Travail total</span>
+    </div>`
+   : `<div class="empty">Aucune journée enregistrée. Saisis tes activités dans l'onglet Journée.</div>`}
+
+  <div class="shead"><span class="eyebrow">Repos hebdomadaire</span></div>
+  ${weeklyPlanHTML()}
+  <div class="meters">
+    <div class="meter"><div class="meter__k">Repos normal</div><div class="meter__v">45 h<small> minimum</small></div></div>
+    <div class="meter"><div class="meter__k">Repos réduit</div><div class="meter__v">24 h<small> à compenser</small></div></div>
+  </div>
+  <p style="font-size:13px; color:var(--muted); line-height:1.55">
+    Un repos réduit se compense par un bloc équivalent, rattaché à un repos d'au moins 9 h, avant la fin de la troisième semaine qui suit.
+    Sur deux semaines consécutives, il faut au minimum deux repos normaux, ou un repos normal et un repos réduit.</p>
+
+  <div class="foot">Toutes les heures sont exprimées en UTC, comme sur le chronotachygraphe et les tickets — ne les convertis pas en heure locale. Outil d'aide au calcul, sans valeur juridique en cas de contrôle.</div>`;
+}
+
+const RULES=[
+ {h:"Conduite", rows:[
+   ["Conduite continue maximale","4 h 30"],
+   ["Pause après 4 h 30","45 min"],
+   ["Pause fractionnée (dans cet ordre)","15 min + 30 min"],
+   ["Conduite journalière","9 h"],
+   ["Extension possible","10 h · 2 fois par semaine"],
+   ["Conduite hebdomadaire","56 h"],
+   ["Conduite sur 2 semaines","90 h"]
+ ], p:"Les autres tâches n'interrompent pas la conduite continue : seule une pause ou un repos remet le compteur à zéro."},
+
+ {h:"Repos journalier", rows:[
+   ["Repos normal","11 h consécutives"],
+   ["Repos fractionné","3 h + 9 h = 12 h"],
+   ["Repos réduit","9 h minimum"],
+   ["Repos réduits autorisés","3 entre deux repos hebdomadaires"],
+   ["Période de référence","24 h"],
+   ["Double équipage","9 h sur une période de 30 h"]
+ ], p:"Le repos journalier doit être pris dans les 24 h qui suivent la fin du repos précédent. Un repos fractionné se prend obligatoirement dans cet ordre : d'abord au moins 3 h, puis au moins 9 h."},
+
+ {h:"Repos hebdomadaire", rows:[
+   ["Repos normal","45 h"],
+   ["Repos réduit","24 h minimum"],
+   ["Déclenchement au plus tard","après 6 périodes de 24 h"],
+   ["Compensation d'un repos réduit","avant la fin de la 3ᵉ semaine suivante"],
+   ["Sur 2 semaines consécutives","2 normaux, ou 1 normal + 1 réduit"]
+ ], p:"La compensation se rattache à un repos d'au moins 9 heures et se prend en un seul bloc."},
+
+ {h:"Travail de nuit", rows:[
+   ["Période nocturne (marchandises)","21 h – 6 h"],
+   ["Période nocturne (voyageurs)","22 h – 5 h"],
+   ["Déclenchement","dès 1 min travaillée dans la période"],
+   ["Durée quotidienne de travail","10 h maximum"],
+   ["Sans travail de nuit","12 h maximum"],
+   ["Majoration (marchandises)","20 % du temps de nuit"],
+   ["Travailleur de nuit","≥ 3 h de nuit, 2 fois par semaine"]
+ ], p:"Dès qu'une seule minute de travail tombe dans la période nocturne, la durée quotidienne du travail est ramenée de 12 h à 10 h. Cette limite porte sur le travail total — conduite et autres tâches — et non sur la seule conduite."},
+
+ {h:"Temps de travail", rows:[
+   ["Pause dès 6 h de travail","30 min"],
+   ["Pause au-delà de 9 h de travail","45 min"],
+   ["Fractionnement minimal","15 min"],
+   ["Durée hebdomadaire moyenne","48 h"],
+   ["Durée hebdomadaire maximale","60 h"],
+   ["Durée quotidienne","12 h · 10 h si travail de nuit"]
+ ], p:"Directive 2002/15/CE. Le temps de travail comprend la conduite et les autres tâches : chargement, déchargement, contrôles, attente non déterminée à l'avance."},
+
+ {h:"Durées de service (France)", rows:[
+   ["Grand routier — hebdomadaire","56 h maximum"],
+   ["Grand routier — moyenne trimestre","53 h"],
+   ["Grand routier — mensuel","220 h"],
+   ["Courte distance — hebdomadaire","48 h maximum"],
+   ["Courte distance — moyenne trimestre","44 h"],
+   ["Courte distance — mensuel","186 h"],
+   ["Messagerie — mensuel","169 h"],
+   ["Amplitude de la journée","12 h · 14 h maximum"]
+ ], p:"Le temps de service comprend la conduite, les autres travaux et le temps à disposition. Ces durées relèvent du décret 83-40 et de la convention collective des transports routiers : ton accord d'entreprise peut être plus favorable."},
+
+ {h:"Heures supplémentaires et repos", rows:[
+   ["Seuil de déclenchement","au-delà de 35 h"],
+   ["Majoration de la 36ᵉ à la 43ᵉ h","25 %"],
+   ["Majoration au-delà de 43 h","50 %"],
+   ["Contingent — longue distance","195 h par an"],
+   ["Contingent — autres","130 h par an"],
+   ["Repos compensateur — 41 à 79 h","1 journée"],
+   ["Repos compensateur — 80 à 108 h","1 journée et demie"],
+   ["Repos compensateur — au-delà de 108 h","2 journées et demie"],
+   ["Majoration travail de nuit","20 %"]
+ ], p:"Le repos compensateur trimestriel se calcule sur les heures supplémentaires effectuées dans le trimestre. Pour les grands routiers, le décompte des heures supplémentaires est mensuel."},
+
+ {h:"Contrôle et documents", rows:[
+   ["Données à présenter","journée en cours + 56 jours"],
+   ["Conduite sans carte","15 jours maximum"],
+   ["Téléchargement carte conducteur","tous les 28 jours"],
+   ["Validité carte conducteur","5 ans"],
+   ["Vérification du chronotachygraphe","tous les 2 ans"]
+ ], p:"En cas de panne du chronotachygraphe, le délai de remise en état est d'une semaine ; au-delà, le véhicule ne peut plus circuler."}
+];
+
+function viewRegles(){
+  return `${header()}
+  <div class="shead" style="margin-top:0"><span class="eyebrow">Mémo réglementaire</span></div>
+  ${RULES.map((r,i)=>`
+    <div class="rule" data-a="rule">
+      <div class="rule__h"><h3>${esc(r.h)}</h3><span class="chev">▾</span></div>
+      <div class="rule__b">
+        <table>${r.rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>
+        ${r.p?`<p>${esc(r.p)}</p>`:""}
+      </div>
+    </div>`).join("")}
+  <div class="foot">Sources : règlement (CE) 561/2006 pour les temps de conduite et de repos, directive 2002/15/CE pour le temps de travail. Outil d'aide au calcul, sans valeur juridique.</div>`;
+}
+
+/* ===================== RENDU ===================== */
+function render(){
+  const app=document.getElementById("app");
+  app.innerHTML = state.tab==="mois" ? viewMois()
+                : state.tab==="semaine" ? viewSemaine()
+                : state.tab==="regles"  ? viewRegles()
+                : viewJour();
+}
+
+document.getElementById("app").addEventListener("change", e=>{
+  const t=e.target.closest("[data-a]");
+  if(t && t.dataset.a==="mois"){ state.mois=t.value; render(); }
+});
+document.getElementById("app").addEventListener("click", e=>{
+  const t=e.target.closest("[data-a]"); if(!t) return;
+  const a=t.dataset.a, v=t.dataset.v;
+  if(a==="tab"){ state.tab=v; render(); }
+  else if(a==="kind"){ state.kind=v; render(); }
+  else if(a==="add"){
+    const t1=document.getElementById("t1").value, t2=document.getElementById("t2").value;
+    if(!t1||!t2) return;
+    const list=dayList().slice();
+    list.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,6), kind:state.kind, start:toMin(t1), end:toMin(t2)});
+    setDay(list); render();
+  }
+  else if(a==="del"){ setDay(dayList().filter(s=>s.id!==v)); render(); }
+  else if(a==="clear"){ if(confirm("Vider toutes les activités de cette journée ?")){ setDay([]); render(); } }
+  else if(a==="ext"){ store.opts.ext10=Math.max(0,Math.min(2,store.opts.ext10+ +v)); save(); render(); }
+  else if(a==="ticket"){ applyTicket(); }
+  else if(a==="pay"){
+    const tx=document.getElementById("taux"), dr=document.getElementById("dispoRate");
+    store.opts.taux = tx? tx.value : "";
+    store.opts.dispoRate = dr? dr.value : 50;
+    save(); render();
+  }
+  else if(a==="statut"){ store.opts.statut=v; save(); render(); }
+  else if(a==="red"){ store.opts.red9=Math.max(0,Math.min(3,store.opts.red9+ +v)); save(); render(); }
+  else if(a==="rule"){ t.classList.toggle("open"); }
+});
+
+render();
+setInterval(()=>{
+  const n=document.getElementById("utcnow"); if(n) n.textContent=clock(nowUTCmin());
+  const f=document.getElementById("frnow"); if(f) f.textContent=` (${frFromTs(Date.now())} en France · UTC+${frOffsetHours()}, ${frSeason()})`;
+}, 30000);
+</script>
+</body>
+</html>

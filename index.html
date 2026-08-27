@@ -77,6 +77,9 @@
   .gauge__bar>i{display:block; height:100%; border-radius:99px; transition:width .3s ease}
   .gauge__ticks{display:flex; justify-content:space-between; margin-top:5px}
   .gauge__ticks span{font-family:var(--mono); font-size:10px; color:var(--faint)}
+  .deadline{margin-top:11px; padding-top:10px; border-top:1px solid var(--line2); font-size:13px; line-height:1.5}
+  .deadline b{font-family:var(--display); font-weight:700; font-size:15px; color:var(--amber)}
+  .deadline__w{display:block; font-size:12px; color:var(--muted); margin-top:2px}
 
   .restplan{border-radius:14px; padding:14px 15px; margin-bottom:13px; border:1px solid var(--line2); background:var(--card)}
   .restplan--ok{border-color:#2C7A5A; background:#17241F}
@@ -363,6 +366,17 @@ function analyse(list){
   r.amplitude = (r.amplitudeEnd!==null && r.amplitudeStart!==null) ? (r.amplitudeEnd-r.amplitudeStart) : 0;
   if(r.amplitude>1440){ r.amplitudeOver=true; r.amplitude=1440; }
 
+  // pause : préavis à 30 min puis alerte ferme à 15 min
+  const left270 = 270 - r.contDrive;
+  if(left270>0 && left270<=15){
+    r.alerts.push({id:"p15", lvl:"bad",
+      txt:`Pause dans ${Math.ceil(left270)} min. Cherche une aire maintenant : au-delà de 4 h 30, c'est une infraction.`});
+  } else if(left270>0 && left270<=30){
+    r.alerts.push({id:"p30", lvl:"warn",
+      txt:`Plus que ${Math.ceil(left270)} min de conduite continue avant la pause obligatoire de 45 min.`});
+  }
+  r.pauseLeft = left270;
+
   // conduite journalière
   const maxDrive = store.opts.ext10>0 ? 600 : 540;
   if(r.drive>600){
@@ -410,12 +424,16 @@ function verdict(a, list){
   if(!list.length){
     return {lvl:"ok", t:"Journée vide", d:"Ajoute ta première activité pour lancer le calcul."};
   }
-  if(a.alerts.some(x=>x.lvl==="bad")){
+  const PREAVIS=["p15","p30"];
+  if(a.alerts.some(x=>x.lvl==="bad" && PREAVIS.indexOf(x.id)<0)){
     return {lvl:"bad", t:"Tu es en infraction", d:"Corrige la situation avant de reprendre la route."};
   }
   const restCont = 270 - a.contDrive;
   if(restCont<=0){
     return {lvl:"bad", t:"Pause obligatoire maintenant", d:"45 min d'un bloc, ou 15 min puis 30 min."};
+  }
+  if(restCont<=15){
+    return {lvl:"bad", t:`Pause dans ${Math.ceil(restCont)} min`, d:"Arrête-toi à la première aire : la limite de 4 h 30 est imminente."};
   }
   if(restCont<=30){
     return {lvl:"warn", t:`Pause dans ${fmt(restCont)}`, d:"Prépare ton arrêt : aire ou parking en vue."};
@@ -571,6 +589,33 @@ function weeklyPlanHTML(){
 
 
 /* ===================== RSF — cumuls mois et trimestre ===================== */
+/* Lundi de la semaine ISO contenant ce jour (clé AAAA-MM-JJ, UTC). */
+function weekKey(dayKey){
+  const [y,m,d]=dayKey.split("-").map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d));
+  const dow=(dt.getUTCDay()+6)%7;           // lundi = 0
+  dt.setUTCDate(dt.getUTCDate()-dow);
+  return dt.toISOString().slice(0,10);
+}
+function thisWeekKey(){ return weekKey(new Date().toISOString().slice(0,10)); }
+function prevWeekKey(){
+  const [y,m,d]=thisWeekKey().split("-").map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d)); dt.setUTCDate(dt.getUTCDate()-7);
+  return dt.toISOString().slice(0,10);
+}
+/* Conduite et service par semaine ISO */
+function weekTotals(){
+  const out={};
+  Object.keys(store.days).forEach(k=>{
+    const a=analyse(store.days[k]||[]);
+    const w=weekKey(k);
+    if(!out[w]) out[w]={drive:0, service:0, days:0};
+    out[w].drive+=a.drive; out[w].service+=a.service;
+    if((store.days[k]||[]).length) out[w].days++;
+  });
+  return out;
+}
+
 function serviceOf(key){ const a=analyse(store.days[key]||[]); return a.service; }
 
 /* Service par mois calendaire : {"2026-08": minutes} */
@@ -874,6 +919,21 @@ function gaugeHTML(a){
     </div>
     <div class="gauge__bar"><i style="width:${pct}%; background:${col}"></i></div>
     <div class="gauge__ticks"><span>0:00</span><span>2:15</span><span>4:30</span></div>
+    ${deadlineHTML(a)}
+  </div>`;
+}
+
+/* Heure à laquelle la pause devient obligatoire, calculée depuis la fin du dernier segment. */
+function deadlineHTML(a){
+  const list=dayList();
+  if(!list.length || a.contDrive<=0 || a.contDrive>=270) return "";
+  const segs=chrono(list);
+  const end=segs[segs.length-1];
+  const at=(end.abs+end.d) + (270-a.contDrive);   // minutes UTC
+  const warn=at-15;
+  return `<div class="deadline">
+    <span>Pause obligatoire à <b>${clock(at)} UTC</b> <span class="fr">(${frFromMin(at)} FR)</span></span>
+    <span class="deadline__w">Prépare ton arrêt dès ${clock(warn)} UTC</span>
   </div>`;
 }
 
@@ -991,8 +1051,14 @@ function viewSemaine(){
     const a=analyse(store.days[d]);
     return {d, drive:a.drive, service:a.service};
   });
-  const week=rows.reduce((s,r)=>s+r.drive,0);
-  const service=rows.reduce((s,r)=>s+r.service,0);
+  const wt=weekTotals();
+  const wk=thisWeekKey(), pk=prevWeekKey();
+  const cur=wt[wk]||{drive:0,service:0,days:0};
+  const prev=wt[pk]||{drive:0,service:0,days:0};
+  const week=cur.drive;                      // conduite de la semaine en cours
+  const service=cur.service;                 // service de la semaine en cours
+  const twoWeeks=cur.drive+prev.drive;       // limite des 90 h
+  const twoLvl = twoWeeks>5400 ? "bad" : twoWeeks>4800 ? "warn" : "ok";
   const st=statut();
   const semMax=st.sem*60, moyMax=st.moy*60;
   const svLvl = service>semMax ? "bad" : service>moyMax ? "warn" : "ok";
@@ -1002,12 +1068,23 @@ function viewSemaine(){
   return `${header()}
   <div class="verdict verdict--${week>3360?"bad":week>3000?"warn":"ok"}">
     <div class="verdict__head"><span class="eyebrow">Conduite hebdomadaire</span>
-      <span class="num" style="font-size:11.5px; color:var(--muted)">${rows.length} journée${rows.length>1?"s":""}</span></div>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${cur.days} journée${cur.days>1?"s":""} · semaine du ${wk.split("-").reverse().join("/")}</span></div>
     <div class="verdict__t ${week>3360?"bad":week>3000?"warn":"ok"}">${fmtShort(week)} <span style="font-size:15px; color:var(--muted)">/ 56 h</span></div>
     <div class="verdict__d">Sur deux semaines consécutives, le total ne peut pas dépasser 90 h.</div>
     <div class="gauge">
       <div class="gauge__bar"><i style="width:${pctW}%; background:${colW}"></i></div>
       <div class="gauge__ticks"><span>0 h</span><span>28 h</span><span>56 h</span></div>
+    </div>
+  </div>
+
+  <div class="restplan restplan--${twoLvl}">
+    <div class="restplan__head"><span class="eyebrow">Deux semaines consécutives</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">${fmtShort(prev.drive)} + ${fmtShort(cur.drive)}</span></div>
+    <div class="rp__v ${twoLvl}" style="font-size:22px">${fmtShort(twoWeeks)} <span style="font-size:14px; color:var(--muted)">/ 90 h</span></div>
+    <div class="rp__s">${twoWeeks>5400?`dépassement de ${fmt(twoWeeks-5400)}`:`il te reste ${fmt(5400-twoWeeks)} sur les deux semaines`}</div>
+    <div class="gauge" style="margin-top:10px">
+      <div class="gauge__bar"><i style="width:${Math.min(100,Math.round(twoWeeks/5400*100))}%; background:${twoLvl==="bad"?"var(--bad)":twoLvl==="warn"?"var(--amber)":"var(--ok)"}"></i></div>
+      <div class="gauge__ticks"><span>0 h</span><span>45 h</span><span>90 h</span></div>
     </div>
   </div>
 

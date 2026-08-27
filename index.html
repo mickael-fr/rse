@@ -53,6 +53,17 @@
   .tabs button:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
 
   /* ---- verdict (signature) ---- */
+  .daybar{display:flex; align-items:center; gap:8px; margin-bottom:12px}
+  .daybar__c{flex:1; background:var(--panel); border:1px solid var(--line2); border-radius:10px; padding:7px 13px}
+  .daypick{width:100%; background:none; border:0; color:var(--ink); font-family:var(--display);
+    font-weight:700; font-size:17px; padding:1px 0 0; outline:none}
+  .daypick::-webkit-calendar-picker-indicator{filter:invert(.7)}
+  .daynav{flex:0 0 auto; width:40px; height:40px; border:1px solid var(--line2); background:var(--panel);
+    color:var(--ink); border-radius:10px; font-size:20px; line-height:1; cursor:pointer}
+  .daynav:hover:not(:disabled){background:var(--card)}
+  .daynav:disabled{opacity:.35; cursor:not-allowed}
+  .daynav:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
   .utcbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 13px;
     background:var(--panel); border:1px solid var(--line2); border-radius:10px; margin-bottom:12px}
   .utcbar .num{font-family:var(--display); font-weight:800; font-size:18px; color:var(--amber)}
@@ -77,6 +88,9 @@
   .gauge__bar>i{display:block; height:100%; border-radius:99px; transition:width .3s ease}
   .gauge__ticks{display:flex; justify-content:space-between; margin-top:5px}
   .gauge__ticks span{font-family:var(--mono); font-size:10px; color:var(--faint)}
+  .why{margin-top:10px; padding-top:9px; border-top:1px solid var(--line2);
+    font-size:12.5px; color:var(--muted); line-height:1.5}
+  .why b{color:var(--ink); font-weight:600}
   .deadline{margin-top:11px; padding-top:10px; border-top:1px solid var(--line2); font-size:13px; line-height:1.5}
   .deadline b{font-family:var(--display); font-weight:700; font-size:15px; color:var(--amber)}
   .deadline__w{display:block; font-size:12px; color:var(--muted); margin-top:2px}
@@ -122,6 +136,28 @@
   .stbtn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
 
   /* ---- saisie ---- */
+  .plan{background:var(--card); border:1px solid var(--line2); border-radius:14px; overflow:hidden; margin-bottom:14px}
+  .plan__hd{display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 14px; background:var(--panel); border-bottom:1px solid var(--line2)}
+  .prow{padding:12px 14px; border-top:1px solid var(--line); border-left:3px solid var(--line2)}
+  .prow:first-of-type{border-top:0}
+  .prow--ok{border-left-color:var(--ok)}
+  .prow--warn{border-left-color:var(--amber)}
+  .prow--bad{border-left-color:var(--bad)}
+  .prow__k{font-family:var(--mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint)}
+  .prow__v{font-family:var(--display); font-weight:700; font-size:17px; margin-top:3px; line-height:1.25}
+  .prow--ok .prow__v{color:var(--ok)} .prow--warn .prow__v{color:var(--amber)} .prow--bad .prow__v{color:var(--bad)}
+  .prow__s{font-size:12.5px; color:var(--muted); margin-top:3px; line-height:1.45}
+
+  .gaps{background:#26191A; border:1px solid #8A322C; border-radius:12px; padding:13px 14px; margin-bottom:14px}
+  .gaps__hd{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px}
+  .gaps__l{display:flex; flex-wrap:wrap; gap:7px}
+  .gap{display:inline-flex; align-items:center; gap:7px; background:rgba(0,0,0,.25); border:1px solid #8A322C;
+    border-radius:7px; padding:5px 9px; font-family:var(--mono); font-size:12px; color:#FFD2CD}
+  .gap i{font-style:normal; color:var(--faint); font-size:11px}
+  .gaps__p{font-size:12.5px; color:var(--muted); line-height:1.5; margin:10px 0 11px}
+  .gaps__b{display:flex; gap:8px; flex-wrap:wrap}
+
   .adder{background:var(--panel); border:1px solid var(--line2); border-radius:13px; padding:14px; margin-bottom:14px}
   .kinds{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:11px}
   .kinds .kind{font-size:10.5px; padding:9px 2px}
@@ -325,6 +361,31 @@ const STATUTS={
 };
 function statut(){ return STATUTS[store.opts.statut] || STATUTS.longue; }
 
+/* Extensions à 10 h : une journée dont la conduite dépasse 9 h en consomme une.
+   Le quota est de 2 par semaine ISO. On exclut la journée consultée du décompte
+   pour savoir de quel plafond elle dispose encore. */
+function driveOnly(list){            // conduite brute, sans passer par analyse()
+  let d=0;
+  (list||[]).forEach(s=>{ if(s.kind==="C") d+=dur(s); });
+  return d;
+}
+function ext10Used(excludeDay){
+  const ex=excludeDay||state.editDay;
+  const wk=weekKey(ex);
+  let n=0;
+  Object.keys(store.days).forEach(k=>{
+    if(k===ex) return;
+    if(weekKey(k)!==wk) return;
+    if(driveOnly(store.days[k])>540) n++;
+  });
+  return n;
+}
+/* Plafond de conduite applicable à la journée consultée. */
+function maxDriveFor(day){
+  const d=day||state.editDay;
+  return ext10Used(d)<2 ? 600 : 540;
+}
+
 /* ===================== CALCULS RSE ===================== */
 /* Règlement (CE) 561/2006 — conduite, pauses, repos. */
 function analyse(list){
@@ -359,8 +420,11 @@ function analyse(list){
       r.rest+=d; r.contDrive=0; frag15=false; r.lastRest=s;
     }
     if(s.kind==="C"||s.kind==="T"){ r.night += nightMinutes(s); }
-    if(r.amplitudeStart===null) r.amplitudeStart=s.abs;
-    r.amplitudeEnd=s.abs+d;
+    // amplitude : de la prise de service à la fin de service — le repos n'en fait pas partie
+    if(s.kind!=="R"){
+      if(r.amplitudeStart===null) r.amplitudeStart=s.abs;
+      r.amplitudeEnd=s.abs+d;
+    }
   });
   r.service = r.drive + r.work;
   r.amplitude = (r.amplitudeEnd!==null && r.amplitudeStart!==null) ? (r.amplitudeEnd-r.amplitudeStart) : 0;
@@ -378,12 +442,19 @@ function analyse(list){
   r.pauseLeft = left270;
 
   // conduite journalière
-  const maxDrive = store.opts.ext10>0 ? 600 : 540;
+  const maxDrive = maxDriveFor();
+  const used=ext10Used();
   if(r.drive>600){
     r.alerts.push({id:"d10", lvl:"bad", txt:`Conduite journalière de ${fmt(r.drive)} : au-delà des 10 h maximum absolues.`});
+  } else if(r.drive>540 && used>=2){
+    r.alerts.push({id:"dq", lvl:"bad",
+      txt:`Conduite de ${fmt(r.drive)} alors que les 2 extensions à 10 h de la semaine sont déjà utilisées. La limite du jour est de 9 h.`});
   } else if(r.drive>540){
     r.alerts.push({id:"d9", lvl:"warn",
-      txt:`Conduite de ${fmt(r.drive)} : tu utilises une extension à 10 h. Maximum 2 fois par semaine.`});
+      txt:`Extension à 10 h utilisée aujourd'hui (${used+1}ᵉ sur 2 cette semaine).`});
+  } else if(used>=2){
+    r.alerts.push({id:"dq0", lvl:"warn",
+      txt:`Les 2 extensions à 10 h de la semaine sont utilisées : aujourd'hui tu es limité à 9 h de conduite.`});
   }
   // travail de nuit : dès qu'une partie du travail tombe entre 21 h et 6 h,
   // la durée quotidienne de travail est plafonnée à 10 h au lieu de 12 h.
@@ -443,7 +514,7 @@ function verdict(a, list){
     return {lvl:"bad", t:"Journée de travail épuisée",
       d: a.isNight ? "Plafond de 10 h atteint : tu as travaillé de nuit." : "Plafond de 12 h atteint."};
   }
-  const restDay = (store.opts.ext10>0?600:540) - a.drive;
+  const restDay = maxDriveFor() - a.drive;
   if(restDay<=0){
     return {lvl:"bad", t:"Conduite journalière épuisée", d:"Tu dois prendre ton repos journalier."};
   }
@@ -722,8 +793,11 @@ function parseTicket(txt){
     const clock=(line.match(/\b([01]?\d|2[0-3])\s*:\s*([0-5]\d)\b/g)||[]);
     const loose=(line.match(/\b([01]?\d|2[0-3])\s*[hH.]\s*([0-5]\d)\b/g)||[]);
     let times = clock.length ? clock : loose;      // si des HH:MM existent, les durées HHhMM sont écartées
-    if(clock.length && clock.length===1 && loose.length){
-      // une seule heure d'horloge : activité en cours, la durée reste ignorée
+    let durMin = null;
+    if(clock.length===1 && loose.length){
+      // format « symbole · début · durée » : on garde la durée pour clore la ligne
+      const dm=loose[loose.length-1].match(/(\d{1,2})\s*[hH.]\s*(\d{2})/);
+      if(dm) durMin = (+dm[1])*60 + (+dm[2]);
       times=clock;
     }
     const norm=t=>{ const m=t.match(/(\d{1,2})\s*[:hH.]\s*(\d{2})/); return String(+m[1]).padStart(2,"0")+":"+m[2]; };
@@ -733,7 +807,7 @@ function parseTicket(txt){
     if(!times.length) return;   // en-tête, kilométrage, VIN : on ignore
     if(/^\s*\?/.test(line)){ errs.push(`Période sans carte insérée détectée (${times.map(norm).join(" → ")}) : à saisir toi-même.`); return; }
     if(!k){ errs.push(`Ligne ${i+1} : activité non reconnue (attendu C, T, P ou R).`); return; }
-    rows.push({k, times:times.map(norm)});
+    rows.push({k, times:times.map(norm), durMin});
   });
 
   const single = rows.length>1 && rows.every(r=>r.times.length===1);
@@ -741,7 +815,13 @@ function parseTicket(txt){
     for(let i=0;i<rows.length-1;i++){
       out.push({kind:rows[i].k, start:toMin(rows[i].times[0]), end:toMin(rows[i+1].times[0])});
     }
-    errs.push(`Mode rafale : la dernière ligne (${rows[rows.length-1].times[0]}) sert de fin, elle n'est pas ajoutée.`);
+    const last=rows[rows.length-1];
+    if(last.durMin!=null){
+      const st=toMin(last.times[0]);
+      out.push({kind:last.k, start:st, end:(st+last.durMin)%1440});
+    } else {
+      errs.push(`La dernière ligne (${last.times[0]}) sert de fin, elle n'est pas ajoutée.`);
+    }
   } else {
     rows.forEach((r,i)=>{
       if(r.times.length<2){ errs.push(`Ligne ${i+1} : il manque l'heure de fin.`); return; }
@@ -754,6 +834,23 @@ function parseTicket(txt){
 function applyTicket(){
   const ta=document.getElementById("ticket");
   if(!ta) return;
+  /* Date des activités : sur un ticket, l'en-tête porte la date d'impression
+     et la date des activités vient juste avant les lignes horaires.
+     On retient donc la dernière date rencontrée avant la première activité. */
+  let dateNote="";
+  {
+    const lines=ta.value.split(/\n/);
+    let found=null;
+    for(const line of lines){
+      if(/\b\d{1,2}\s*:\s*\d{2}\b/.test(line) && /^\s*[^\d]/.test(line)) break;   // première ligne d'activité
+      const d=line.match(/\b(\d{2})[.\/-](\d{2})[.\/-](\d{4})\b/);
+      if(d) found=d;
+    }
+    if(found){
+      const k=`${found[3]}-${found[2]}-${found[1]}`;
+      if(k!==state.editDay && k<=todayISO()){ state.editDay=k; dateNote=` · journée du ${found[1]}/${found[2]}/${found[3]}`; }
+    }
+  }
   const {segs,errs}=parseTicket(ta.value);
   const box=document.getElementById("ticketmsg");
   if(!segs.length){
@@ -765,7 +862,7 @@ function applyTicket(){
   const list = replace ? [] : dayList().slice();
   segs.forEach((s,i)=>list.push({id:Date.now()+"-"+i+"-"+Math.random().toString(36).slice(2,5), kind:s.kind, start:s.start, end:s.end}));
   setDay(list);
-  state.ticketMsg = `${segs.length} activité${segs.length>1?"s":""} ${replace?"importée":"ajoutée"}${segs.length>1?"s":""}.${errs.length?" "+errs.join(" "):""}`;
+  state.ticketMsg = `${segs.length} activité${segs.length>1?"s":""} ${replace?"importée":"ajoutée"}${segs.length>1?"s":""}${dateNote}.${errs.length?" "+errs.join(" "):""}`;
   render();
 }
 
@@ -889,6 +986,150 @@ function viewMois(){
   <div class="foot">Toutes les heures sont exprimées en UTC. Outil d'aide au calcul, sans valeur juridique.</div>`;
 }
 
+
+/* ===================== CONTINUITÉ DE LA JOURNÉE =====================
+   Le chronotachygraphe exige une couverture complète de 00:00 à 24:00.
+   Toute minute non renseignée devra être justifiée en contrôle. */
+function dayGaps(list){
+  if(!list.length) return [{from:0, to:1440}];
+  const cov=new Uint8Array(1440);
+  list.forEach(s=>{
+    let a=Math.round(s.start), d=Math.round(dur(s));
+    for(let i=0;i<d;i++) cov[(a+i)%1440]=1;
+  });
+  const out=[]; let i=0;
+  while(i<1440){
+    if(!cov[i]){ const from=i; while(i<1440 && !cov[i]) i++; out.push({from, to:i}); }
+    else i++;
+  }
+  return out;
+}
+function gapsHTML(){
+  const list=dayList();
+  const g=dayGaps(list);
+  if(!g.length){
+    return `<div class="alert alert--ok"><span class="alert__i">✓</span><span>
+      Journée complète de 00:00 à 24:00 : aucune période à justifier.</span></div>`;
+  }
+  const total=g.reduce((s,x)=>s+(x.to-x.from),0);
+  if(!list.length) return "";
+  return `<div class="gaps">
+    <div class="gaps__hd">
+      <span class="eyebrow">Périodes non renseignées</span>
+      <span class="num" style="font-size:11.5px; color:var(--bad)">${fmt(total)}</span>
+    </div>
+    <div class="gaps__l">${g.map(x=>`<span class="gap">${clock(x.from)} → ${clock(x.to===1440?0:x.to)}<i>${fmtShort(x.to-x.from)}</i></span>`).join("")}</div>
+    <p class="gaps__p">Le chronotachygraphe te demandera ce que tu faisais pendant ces périodes. En fin de journée et jusqu'à l'embauche du lendemain, c'est presque toujours du repos.</p>
+    <div class="gaps__b">
+      <button class="btn btn--primary btn--sm" data-a="fill" data-v="R">Compléter en repos</button>
+      <button class="btn btn--sm" data-a="fill" data-v="T">Compléter en autres tâches</button>
+    </div>
+  </div>`;
+}
+function fillGaps(kind){
+  const list=dayList().slice();
+  dayGaps(list).forEach((g,i)=>{
+    list.push({id:Date.now()+"-g"+i, kind, start:g.from, end:g.to%1440});
+  });
+  setDay(list); render();
+}
+
+
+/* ===================== PLAN DE JOURNÉE =====================
+   Que faire maintenant, et jusqu'à quand, en respectant RSE et RSF.
+   On calcule chaque plafond, puis on retient le plus contraignant. */
+function dayPlan(){
+  const list=dayList();
+  if(!list.length) return null;
+  const a=analyse(list);
+  const segs=chrono(list);
+  const last=segs[segs.length-1];
+  const now=last.abs+last.d;                 // fin des activités connues, en minutes UTC
+  const svcStart=a.amplitudeStart;
+  const maxDrive=maxDriveFor();
+
+  // --- prochaine pause ---
+  const pauseIn = Math.max(0, 270-a.contDrive);
+  const pauseAt = now + pauseIn;
+
+  // --- plafonds de fin de service ---
+  const caps=[];
+  if(svcStart!==null){
+    caps.push({at: svcStart + (a.amplitude>840?840:720), why:"amplitude de 12 h", k:"amp"});
+    if(a.isNight) caps.push({at: svcStart + 600 + a.pause + a.rest, why:"plafond de travail de nuit (10 h)", k:"nuit"});
+    else caps.push({at: svcStart + 720 + a.pause + a.rest, why:"durée quotidienne de travail (12 h)", k:"trav"});
+  }
+  // conduite journalière : moment où elle serait épuisée en roulant sans interruption
+  const driveLeft=Math.max(0, maxDrive-a.drive);
+  caps.push({at: now + driveLeft + (pauseIn<driveLeft?45:0), why:"conduite journalière épuisée", k:"drive"});
+
+  // échéance des 24 h issue du dernier repos
+  const c=chainState();
+  let restBy11=null, restBy9=null;
+  if(c.lastRest){
+    const base=dayStartTs(state.editDay);
+    restBy11=Math.round((c.startBy11-base)/60000);
+    restBy9 =Math.round((c.startBy9 -base)/60000);
+    caps.push({at: restBy11, why:"repos journalier à prendre dans les 24 h", k:"24h"});
+  }
+  caps.sort((x,y)=>x.at-y.at);
+  const cap=caps[0];
+
+  return {a, now, pauseIn, pauseAt, driveLeft, cap, caps, restBy11, restBy9,
+          reduced:c.reduced, hasRest:!!c.lastRest};
+}
+
+function planHTML(){
+  const p=dayPlan();
+  if(!p) return "";
+  const {a}=p;
+  const rows=[];
+
+  // 1 · pause
+  if(a.contDrive>0){
+    const lvl = p.pauseIn<=0 ? "bad" : p.pauseIn<=15 ? "bad" : p.pauseIn<=30 ? "warn" : "ok";
+    rows.push({lvl, k:"Prochaine pause",
+      v: p.pauseIn<=0 ? "Maintenant — 45 min" : `${clock(p.pauseAt)} UTC`,
+      fr: p.pauseIn<=0 ? "" : frFromMin(p.pauseAt),
+      s: p.pauseIn<=0 ? "Limite de 4 h 30 atteinte."
+        : `Dans ${fmt(p.pauseIn)}. Prends 45 min d'un bloc, ou 15 min puis 30 min.`});
+  } else {
+    rows.push({lvl:"ok", k:"Prochaine pause", v:"Après 4 h 30 de conduite", fr:"",
+      s:"Ton compteur de conduite continue est à zéro."});
+  }
+
+  // 2 · fin de service
+  if(p.cap){
+    const left=p.cap.at-p.now;
+    const lvl = left<=0 ? "bad" : left<=60 ? "warn" : "ok";
+    rows.push({lvl, k:"Arrêt du service au plus tard", v:`${clock(p.cap.at)} UTC`, fr:frFromMin(p.cap.at),
+      s: (left<=0?"Échéance dépassée. ":`Dans ${fmt(left)}. `) + `Facteur limitant : ${p.cap.why}.`});
+  }
+
+  // 3 · repos
+  if(p.hasRest && p.restBy11!==null){
+    const canReduce=p.reduced<3;
+    rows.push({lvl:"ok", k:"Repos à prendre", v:`${11} h — début avant ${clock(p.restBy11)} UTC`, fr:frFromMin(p.restBy11),
+      s: canReduce
+        ? `Ou 9 h réduites en commençant avant ${clock(p.restBy9)} UTC — il t'en reste ${3-p.reduced} sur 3.`
+        : "Tes 3 repos réduits sont utilisés : le repos normal de 11 h est obligatoire."});
+  } else {
+    rows.push({lvl:"warn", k:"Repos à prendre", v:"Non calculable", fr:"",
+      s:"Aucun repos saisi sur les journées précédentes : impossible de dater l'échéance des 24 h."});
+  }
+
+  return `<div class="plan">
+    <div class="plan__hd"><span class="eyebrow">Ce que tu dois faire</span>
+      <span class="num" style="font-size:11.5px; color:var(--muted)">calculé à ${clock(p.now)} UTC</span></div>
+    ${rows.map(r=>`
+      <div class="prow prow--${r.lvl}">
+        <div class="prow__k">${esc(r.k)}</div>
+        <div class="prow__v">${esc(r.v)}${r.fr?` <span class="fr">(${r.fr} FR)</span>`:""}</div>
+        <div class="prow__s">${esc(r.s)}</div>
+      </div>`).join("")}
+  </div>`;
+}
+
 /* ===================== VUES ===================== */
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
@@ -908,19 +1149,53 @@ function header(){
   </div>`;
 }
 
+/* Dernier événement ayant remis le compteur de conduite continue à zéro. */
+function contReset(list){
+  const segs=chrono(list);
+  let frag15=false, reset=null, since=null;
+  segs.forEach(s=>{
+    if(s.kind==="P"){
+      if(s.d>=45){ reset={kind:"P", d:s.d, at:s.abs+s.d}; frag15=false; since=null; }
+      else if(s.d>=30 && frag15){ reset={kind:"P", d:s.d, at:s.abs+s.d}; frag15=false; since=null; }
+      else if(s.d>=15){ frag15=true; }
+    } else if(s.kind==="R"){
+      reset={kind:"R", d:s.d, at:s.abs+s.d}; frag15=false; since=null;
+    } else if(s.kind==="C" && since===null){ since=s.abs; }
+  });
+  return {reset, since};
+}
+
 function gaugeHTML(a){
   const used=Math.min(a.contDrive,270), pct=Math.round(used/270*100);
   const left=270-a.contDrive;
   const col = left<=0 ? "var(--bad)" : left<=30 ? "var(--amber)" : "var(--ok)";
   return `<div class="gauge">
     <div class="gauge__row">
-      <span class="gauge__lab">Avant la pause obligatoire</span>
+      <span class="gauge__lab">Conduite restante avant pause</span>
       <span class="gauge__val" style="color:${col}">${left<=0?"0:00":fmtShort(left)}</span>
     </div>
     <div class="gauge__bar"><i style="width:${pct}%; background:${col}"></i></div>
     <div class="gauge__ticks"><span>0:00</span><span>2:15</span><span>4:30</span></div>
+    ${contWhyHTML(a)}
     ${deadlineHTML(a)}
   </div>`;
+}
+
+/* Pourquoi le compteur est à ce niveau : c'est ce que la jauge seule ne dit pas. */
+function contWhyHTML(a){
+  const list=dayList();
+  if(!list.length) return "";
+  const {reset, since}=contReset(list);
+  if(a.contDrive<=0){
+    if(reset){
+      return `<div class="why">Compteur remis à zéro par ${reset.kind==="R"?"le repos":"la pause"} de
+        <b>${fmt(reset.d)}</b> terminé${reset.kind==="R"?"":"e"} à <b>${clock(reset.at)} UTC</b>.
+        Les ${fmt(a.drive)} déjà conduits restent comptés sur la journée.</div>`;
+    }
+    return `<div class="why">Aucune conduite enregistrée pour l'instant.</div>`;
+  }
+  return `<div class="why">Tu conduis sans interruption valable depuis <b>${clock(since)} UTC</b>,
+    soit <b>${fmt(a.contDrive)}</b>. Total du jour : ${fmt(a.drive)}.</div>`;
 }
 
 /* Heure à laquelle la pause devient obligatoire, calculée depuis la fin du dernier segment. */
@@ -962,7 +1237,7 @@ function meterCls(v,warn,bad){ return v>=bad?"meter--bad":v>=warn?"meter--warn":
 
 function viewJour(){
   const list=dayList(), a=analyse(list), v=verdict(a,list);
-  const maxDrive=store.opts.ext10>0?600:540;
+  const maxDrive=maxDriveFor();
   const rows = list.length ? sorted(list).map((s,i)=>`
     <div class="row">
       <div class="row__ic" style="background:${KINDS[s.kind].color}">${KINDS[s.kind].letter}</div>
@@ -972,19 +1247,31 @@ function viewJour(){
     </div>`).join("") : "";
 
   return `${header()}
+  <div class="daybar">
+    <button class="daynav" data-a="day" data-v="-1" aria-label="Jour précédent">‹</button>
+    <div class="daybar__c">
+      <span class="eyebrow">Journée saisie</span>
+      <input type="date" id="dayPick" class="daypick" value="${state.editDay}">
+    </div>
+    <button class="daynav" data-a="day" data-v="1" aria-label="Jour suivant" ${state.editDay>=todayISO()?"disabled":""}>›</button>
+  </div>
+  ${state.editDay!==todayISO()?`<div class="alert alert--warn" style="margin-bottom:12px"><span class="alert__i">!</span><span>
+    Tu consultes une journée passée. Les échéances ci-dessous sont calculées à partir de cette journée, pas de l'heure actuelle.</span></div>`:""}
   <div class="utcbar">
     <span class="eyebrow">Heure UTC</span>
     <span><span class="num" id="utcnow">${clock(nowUTCmin())}</span><span class="fr" id="frnow"> (${frFromTs(Date.now())} en France · UTC+${frOffsetHours()}, ${frSeason()})</span></span>
   </div>
   <div class="verdict verdict--${v.lvl}">
     <div class="verdict__head">
-      <span class="eyebrow">État actuel</span>
+      <span class="eyebrow">${state.editDay===todayISO()?"État actuel":"État en fin de journée"}</span>
       <span class="num" style="font-size:11.5px; color:var(--muted)">${list.length} activité${list.length>1?"s":""}</span>
     </div>
     <div class="verdict__t ${v.lvl}">${esc(v.t)}</div>
     <div class="verdict__d">${esc(v.d)}</div>
     ${gaugeHTML(a)}
   </div>
+
+  ${planHTML()}
 
   <div class="meters">
     <div class="meter ${meterCls(a.drive, maxDrive-60, maxDrive)}">
@@ -1007,36 +1294,20 @@ function viewJour(){
 
   ${stripHTML(list)}
 
-  <div class="adder">
-    <div class="eyebrow" style="margin-bottom:9px">Ajouter une activité <span style="color:var(--amber)">· heures UTC</span> <span class="fr">France = UTC +${frOffsetHours()} h (${frSeason()})</span></div>
-    <div class="kinds">
-      ${Object.entries(KINDS).map(([k,v])=>`
-        <button class="kind" data-k="${k}" data-a="kind" data-v="${k}" aria-pressed="${state.kind===k}">
-          <b>${v.letter}</b>${v.lab}</button>`).join("")}
-    </div>
-    <div class="times">
-      <div class="fld"><label for="t1">Début</label><input id="t1" type="time" value="08:00"></div>
-      <div class="fld"><label for="t2">Fin</label><input id="t2" type="time" value="12:30"></div>
-      <button class="btn btn--primary" data-a="add">Ajouter</button>
-    </div>
-  </div>
+  ${gapsHTML()}
 
   ${ticketHTML()}
 
   ${rows ? `<div class="rows">${rows}</div>` : `<div class="empty">Aucune activité enregistrée pour cette journée.</div>`}
 
   <div class="shead">
-    <span class="eyebrow">Dérogations utilisées</span>
+    <span class="eyebrow">Dérogations de la semaine</span>
     <button class="link" data-a="clear">Vider la journée</button>
   </div>
   <div class="meters">
-    <div class="meter">
-      <div class="meter__k">Conduite 10 h</div>
-      <div class="meter__v">${store.opts.ext10}<small> / 2 par semaine</small></div>
-      <div style="margin-top:8px; display:flex; gap:6px">
-        <button class="btn btn--sm" data-a="ext" data-v="-1">−</button>
-        <button class="btn btn--sm" data-a="ext" data-v="1">+</button>
-      </div></div>
+    <div class="meter ${ext10Used()>=2?"meter--warn":""}">
+      <div class="meter__k">Conduite à 10 h</div>
+      <div class="meter__v">${ext10Used()}<small> / 2 · détecté automatiquement</small></div></div>
     <div class="meter ${chainState().reduced>=3?"meter--bad":chainState().reduced>=2?"meter--warn":""}">
       <div class="meter__k">Repos réduit 9 h</div>
       <div class="meter__v">${chainState().reduced}<small> / 3 · détecté automatiquement</small></div></div>
@@ -1243,23 +1514,23 @@ function render(){
 document.getElementById("app").addEventListener("change", e=>{
   const t=e.target.closest("[data-a]");
   if(t && t.dataset.a==="mois"){ state.mois=t.value; render(); }
+  else if(e.target && e.target.id==="dayPick"){ state.editDay=e.target.value||todayISO(); render(); }
 });
 document.getElementById("app").addEventListener("click", e=>{
   const t=e.target.closest("[data-a]"); if(!t) return;
   const a=t.dataset.a, v=t.dataset.v;
   if(a==="tab"){ state.tab=v; render(); }
   else if(a==="kind"){ state.kind=v; render(); }
-  else if(a==="add"){
-    const t1=document.getElementById("t1").value, t2=document.getElementById("t2").value;
-    if(!t1||!t2) return;
-    const list=dayList().slice();
-    list.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,6), kind:state.kind, start:toMin(t1), end:toMin(t2)});
-    setDay(list); render();
-  }
   else if(a==="del"){ setDay(dayList().filter(s=>s.id!==v)); render(); }
   else if(a==="clear"){ if(confirm("Vider toutes les activités de cette journée ?")){ setDay([]); render(); } }
-  else if(a==="ext"){ store.opts.ext10=Math.max(0,Math.min(2,store.opts.ext10+ +v)); save(); render(); }
   else if(a==="ticket"){ applyTicket(); }
+  else if(a==="fill"){ fillGaps(v); }
+  else if(a==="day"){
+    const [y,m,d]=state.editDay.split("-").map(Number);
+    const dt=new Date(Date.UTC(y,m-1,d)); dt.setUTCDate(dt.getUTCDate()+ +v);
+    const k=dt.toISOString().slice(0,10);
+    if(k<=todayISO()){ state.editDay=k; render(); }
+  }
   else if(a==="pay"){
     const tx=document.getElementById("taux"), dr=document.getElementById("dispoRate");
     store.opts.taux = tx? tx.value : "";
@@ -1267,7 +1538,6 @@ document.getElementById("app").addEventListener("click", e=>{
     save(); render();
   }
   else if(a==="statut"){ store.opts.statut=v; save(); render(); }
-  else if(a==="red"){ store.opts.red9=Math.max(0,Math.min(3,store.opts.red9+ +v)); save(); render(); }
   else if(a==="rule"){ t.classList.toggle("open"); }
 });
 
